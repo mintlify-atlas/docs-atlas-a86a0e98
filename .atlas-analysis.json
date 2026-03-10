@@ -1,0 +1,112 @@
+{
+  "projectType": "saas",
+  "projectName": "Password Generator",
+  "projectDescription": "A full-stack password generation SaaS with user authentication, password management, and a Python package for programmatic use.",
+  "theme": "almond",
+  "primaryColor": "#040404",
+  "lightColor": null,
+  "darkColor": null,
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/password-generation",
+              "features/user-authentication",
+              "features/saved-passwords",
+              "features/profile-management"
+            ]
+          },
+          {
+            "group": "Python Package",
+            "pages": [
+              "python/installation",
+              "python/usage",
+              "python/api-reference"
+            ]
+          },
+          {
+            "group": "Deployment",
+            "pages": [
+              "deployment/frontend",
+              "deployment/backend",
+              "deployment/environment"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Authentication",
+            "pages": [
+              "api/authentication/sign-up",
+              "api/authentication/sign-in",
+              "api/authentication/token-refresh"
+            ]
+          },
+          {
+            "group": "Password Generation",
+            "pages": [
+              "api/password/generate"
+            ]
+          },
+          {
+            "group": "Saved Passwords",
+            "pages": [
+              "api/saved-passwords/create",
+              "api/saved-passwords/list",
+              "api/saved-passwords/update",
+              "api/saved-passwords/delete"
+            ]
+          },
+          {
+            "group": "User Management",
+            "pages": [
+              "api/users/profile",
+              "api/users/update",
+              "api/users/delete"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Random password generation with customizable character sets",
+    "User authentication with JWT tokens",
+    "Save and manage multiple passwords with metadata",
+    "User profile management with avatar support",
+    "Dark/light theme toggle",
+    "Python package for programmatic password generation",
+    "RESTful API built with Django REST Framework",
+    "Next.js frontend with Tailwind CSS"
+  ],
+  "publicApiSurface": [
+    "POST /api/token/ - Obtain JWT token pair",
+    "POST /api/token/refresh/ - Refresh JWT access token",
+    "POST /api/sign-up/ - Register new user",
+    "POST /api/sign-in/ - Authenticate user",
+    "GET /api/generate-password/ - Generate random password",
+    "POST /api/passwords/save/ - Save password with metadata",
+    "GET /api/passwords/ - List all saved passwords",
+    "PUT /api/passwords/{id}/ - Update saved password",
+    "DELETE /api/passwords/{id}/ - Delete saved password",
+    "POST /api/profile/ - Get user profile",
+    "PUT /api/profile/{id}/ - Update user profile",
+    "DELETE /api/users/{id}/ - Delete user account",
+    "password_generator.password() - Generate password (Python)",
+    "password_generator.password_generator(list_num, list_str, list_char) - Generate password with custom character sets (Python)"
+  ]
+}
