@@ -1,0 +1,226 @@
+---
+title: 'Sign In'
+description: 'Authenticate a user and receive JWT tokens for API access'
+api: 'POST /api/sign-in/'
+---
+
+## Overview
+
+The sign-in endpoint authenticates existing users and returns JWT access and refresh tokens. Users can authenticate using their email and password.
+
+## Endpoint
+
+```
+POST /api/sign-in/
+```
+
+## Request Body
+
+<ParamField body="email" type="string" required>
+  User's email address registered in the system.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password.
+</ParamField>
+
+## Response
+
+<ResponseField name="access" type="string">
+  JWT access token for authenticating subsequent API requests. This is a short-lived token.
+</ResponseField>
+
+<ResponseField name="refresh" type="string">
+  JWT refresh token used to obtain new access tokens when they expire.
+</ResponseField>
+
+<ResponseField name="user" type="object">
+  Complete user object containing authenticated user's information.
+  
+  <ResponseField name="user.id" type="integer">
+    Unique identifier for the user.
+  </ResponseField>
+  
+  <ResponseField name="user.username" type="string">
+    User's username.
+  </ResponseField>
+  
+  <ResponseField name="user.email" type="string">
+    User's email address.
+  </ResponseField>
+  
+  <ResponseField name="user.first_name" type="string">
+    User's first name.
+  </ResponseField>
+  
+  <ResponseField name="user.last_name" type="string">
+    User's last name.
+  </ResponseField>
+  
+  <ResponseField name="user.number_phone" type="string">
+    User's phone number.
+  </ResponseField>
+  
+  <ResponseField name="user.avatar" type="string">
+    URL to user's avatar image (if uploaded).
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+```bash cURL
+curl -X POST http://localhost:8000/api/sign-in/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john@example.com",
+    "password": "SecurePass123!"
+  }'
+```
+
+```python Python
+import requests
+
+url = "http://localhost:8000/api/sign-in/"
+payload = {
+    "email": "john@example.com",
+    "password": "SecurePass123!"
+}
+
+response = requests.post(url, json=payload)
+data = response.json()
+
+# Store tokens for future requests
+access_token = data['access']
+refresh_token = data['refresh']
+```
+
+```javascript JavaScript
+fetch('http://localhost:8000/api/sign-in/', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    email: 'john@example.com',
+    password: 'SecurePass123!'
+  })
+})
+.then(response => response.json())
+.then(data => {
+  // Store tokens in localStorage or secure storage
+  localStorage.setItem('access_token', data.access);
+  localStorage.setItem('refresh_token', data.refresh);
+});
+```
+
+## Example Response
+
+```json 200 OK
+{
+  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "user": {
+    "id": 1,
+    "username": "johndoe",
+    "email": "john@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "number_phone": "5551234567",
+    "avatar": "/media/avatars/profile.jpg"
+  }
+}
+```
+
+## Error Responses
+
+```json 400 Bad Request - Invalid Password
+{
+  "error": "Invalid password"
+}
+```
+
+```json 400 Bad Request - Missing Fields
+{
+  "error": "Email and password are required."
+}
+```
+
+```json 404 Not Found - User Does Not Exist
+{
+  "error": "User does not exist."
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Error message details"
+}
+```
+
+## Implementation Details
+
+The sign-in endpoint is implemented in `apps/users/views.py:21-44`. Here's the authentication flow:
+
+1. **User Lookup**: Retrieves user by email using `get_object_or_404()`
+2. **Password Verification**: Validates password using Django's `check_password()` method
+3. **Token Generation**: Creates JWT tokens using `RefreshToken.for_user(user)`
+4. **User Serialization**: Returns complete user data via `UsersSerializer`
+5. **Response**: Returns tokens and user object on success
+
+### Code Reference
+
+From `apps/users/views.py:21-44`:
+
+```python
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def sign_in(request):
+    try:
+        user = get_object_or_404(Users, email=request.data.get('email'))
+
+        if not user.check_password(request.data.get('password')):
+            return Response({'error': 'Invalid password'}, status=status.HTTP_400_BAD_REQUEST)
+
+        refresh = RefreshToken.for_user(user)
+        serializer = UsersSerializer(instance=user)
+
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': serializer.data
+        }, status=status.HTTP_200_OK)
+
+    except KeyError:
+        return Response({'error': 'Email and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+    except Users.DoesNotExist:
+        return Response({'error': 'User does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+```
+
+## Using the Access Token
+
+Once you receive the access token, include it in the Authorization header for authenticated requests:
+
+```bash cURL
+curl -X GET http://localhost:8000/api/profile/ \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+```
+
+```python Python
+import requests
+
+headers = {
+    "Authorization": f"Bearer {access_token}"
+}
+
+response = requests.get("http://localhost:8000/api/profile/", headers=headers)
+```
+
+## Notes
+
+- This endpoint does not require authentication (`@permission_classes([AllowAny])`)
+- Authentication is performed using email (not username)
+- Passwords are never returned in the response
+- The access token has a limited lifetime and should be refreshed using the refresh token
+- Failed login attempts return specific error messages to help identify the issue

@@ -1,0 +1,332 @@
+---
+title: 'Frontend Deployment'
+description: 'Deploy the Next.js frontend application for the Password Generator'
+icon: 'react'
+---
+
+## Overview
+
+The Password Generator frontend is built with **Next.js 16** and uses modern React features. This guide covers deploying the frontend application to production.
+
+## Prerequisites
+
+- Node.js 18.x or higher
+- npm or yarn package manager
+- Backend API URL (deployed Django backend)
+
+## Dependencies
+
+The frontend uses the following key dependencies:
+
+```json package.json
+{
+  "dependencies": {
+    "@nextui-org/button": "^2.0.38",
+    "@nextui-org/react": "^2.4.8",
+    "@nextui-org/system": "^2.2.6",
+    "@nextui-org/theme": "^2.2.11",
+    "axios": "^1.7.7",
+    "framer-motion": "^11.11.11",
+    "next": "^16.1.6",
+    "next-themes": "^0.3.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "react-icons": "^5.3.0",
+    "rsuite": "^5.74.2"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "eslint": "^8",
+    "eslint-config-next": "^15.0.2",
+    "postcss": "^8.4.47",
+    "tailwindcss": "^3.4.14"
+  }
+}
+```
+
+## Installation
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone <repository-url>
+    cd v_web_app/frontend
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    ```bash
+    npm install
+    ```
+
+    Or with yarn:
+    ```bash
+    yarn install
+    ```
+  </Step>
+
+  <Step title="Configure environment variables">
+    Create a `.env.local` file in the frontend directory:
+
+    ```bash .env.local
+    # API Configuration
+    NEXT_PUBLIC_API_URL=https://your-backend-api.com/api/
+    ```
+
+    <Note>
+      Environment variables prefixed with `NEXT_PUBLIC_` are exposed to the browser.
+    </Note>
+  </Step>
+
+  <Step title="Update API configuration">
+    Edit `src/app/utils/Request.api.js` to use environment variables:
+
+    ```javascript src/app/utils/Request.api.js
+    import axios from "axios";
+
+    const api = axios.create({
+      baseURL: process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000/api/",
+    });
+    ```
+
+    <Warning>
+      The current implementation uses a hardcoded URL. Update it to use environment variables for production.
+    </Warning>
+  </Step>
+</Steps>
+
+## Build Commands
+
+### Development Mode
+
+Run the development server with Turbopack:
+
+```bash
+npm run dev
+```
+
+The application will be available at `http://localhost:3000`.
+
+### Production Build
+
+<Steps>
+  <Step title="Build the application">
+    ```bash
+    npm run build
+    ```
+
+    This creates an optimized production build in the `.next` directory.
+  </Step>
+
+  <Step title="Start the production server">
+    ```bash
+    npm run start
+    ```
+
+    The server will start on port 3000 by default.
+  </Step>
+</Steps>
+
+## Next.js Configuration
+
+The `next.config.mjs` file contains the application configuration:
+
+```javascript next.config.mjs
+const nextConfig = {
+    images: {
+        domains: ['localhost'],
+    },
+};
+
+export default nextConfig;
+```
+
+<Info>
+  Add your production domain to the `images.domains` array if you're using Next.js Image optimization.
+</Info>
+
+## Deployment Platforms
+
+### Vercel (Recommended)
+
+<Steps>
+  <Step title="Install Vercel CLI">
+    ```bash
+    npm install -g vercel
+    ```
+  </Step>
+
+  <Step title="Deploy to Vercel">
+    ```bash
+    vercel
+    ```
+
+    Follow the prompts to configure your deployment.
+  </Step>
+
+  <Step title="Set environment variables">
+    In the Vercel dashboard, add your environment variables:
+    - `NEXT_PUBLIC_API_URL`: Your backend API URL
+  </Step>
+</Steps>
+
+### Docker Deployment
+
+Create a `Dockerfile` in the frontend directory:
+
+```dockerfile Dockerfile
+FROM node:18-alpine AS base
+
+# Install dependencies
+FROM base AS deps
+RUN apk add --no-cache libc6-compat
+WORKDIR /app
+
+COPY package.json package-lock.json ./
+RUN npm ci
+
+# Build the application
+FROM base AS builder
+WORKDIR /app
+COPY --from=deps /app/node_modules ./node_modules
+COPY . .
+
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN npm run build
+
+# Production image
+FROM base AS runner
+WORKDIR /app
+
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+
+RUN addgroup --system --gid 1001 nodejs
+RUN adduser --system --uid 1001 nextjs
+
+COPY --from=builder /app/public ./public
+COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
+COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+
+USER nextjs
+
+EXPOSE 3000
+
+ENV PORT=3000
+
+CMD ["node", "server.js"]
+```
+
+Build and run the Docker container:
+
+```bash
+docker build -t password-generator-frontend .
+docker run -p 3000:3000 -e NEXT_PUBLIC_API_URL=https://your-api.com/api/ password-generator-frontend
+```
+
+### Static Export (Optional)
+
+For static site generation:
+
+<Steps>
+  <Step title="Update next.config.mjs">
+    ```javascript next.config.mjs
+    const nextConfig = {
+        output: 'export',
+        images: {
+            unoptimized: true,
+        },
+    };
+    ```
+  </Step>
+
+  <Step title="Build static files">
+    ```bash
+    npm run build
+    ```
+
+    Static files will be generated in the `out` directory.
+  </Step>
+
+  <Step title="Deploy static files">
+    Upload the `out` directory to any static hosting service (Netlify, GitHub Pages, etc.).
+  </Step>
+</Steps>
+
+## Post-Deployment
+
+### Verify Deployment
+
+<Steps>
+  <Step title="Test the application">
+    Visit your deployed URL and verify:
+    - Homepage loads correctly
+    - Password generation works
+    - User authentication functions
+  </Step>
+
+  <Step title="Check API connectivity">
+    Open browser DevTools and check the Network tab to ensure API requests are successful.
+  </Step>
+
+  <Step title="Test responsive design">
+    Verify the application works on mobile and desktop devices.
+  </Step>
+</Steps>
+
+## Troubleshooting
+
+### API Connection Issues
+
+If the frontend cannot connect to the backend:
+
+1. Verify the `NEXT_PUBLIC_API_URL` environment variable is set correctly
+2. Check CORS settings in the Django backend
+3. Ensure the backend API is accessible from your deployment environment
+
+### Build Failures
+
+If the build fails:
+
+```bash
+# Clear Next.js cache
+rm -rf .next
+
+# Clear node_modules and reinstall
+rm -rf node_modules package-lock.json
+npm install
+
+# Rebuild
+npm run build
+```
+
+### Image Optimization Errors
+
+If you encounter image optimization errors, add your image domains to `next.config.mjs`:
+
+```javascript
+const nextConfig = {
+    images: {
+        domains: ['localhost', 'your-cdn.com', 'your-backend.com'],
+    },
+};
+```
+
+## Performance Optimization
+
+- Enable caching headers for static assets
+- Use a CDN for serving static files
+- Enable compression (gzip/brotli)
+- Monitor with Next.js Analytics or similar tools
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Backend Deployment" icon="server" href="./backend">
+    Deploy the Django backend API
+  </Card>
+  <Card title="Environment Configuration" icon="gear" href="./environment">
+    Configure environment variables
+  </Card>
+</CardGroup>

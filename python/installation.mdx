@@ -1,0 +1,99 @@
+---
+title: Installation
+description: Learn how to install and set up the Password Generator package
+---
+
+## Requirements
+
+The Password Generator package requires:
+
+- Python 3.6 or higher
+- No external dependencies (uses only Python standard library)
+
+## Installation Methods
+
+<CodeGroup>
+
+```bash pip
+pip install edimez14-password-generator-1
+```
+
+```bash pip3
+pip3 install edimez14-password-generator-1
+```
+
+```bash Python venv
+# Create a virtual environment
+python -m venv myenv
+
+# Activate the virtual environment
+# On Windows:
+myenv\Scripts\activate
+# On macOS/Linux:
+source myenv/bin/activate
+
+# Install the package
+pip install edimez14-password-generator-1
+```
+
+```bash upgrade
+# Upgrade to the latest version
+pip install --upgrade edimez14-password-generator-1
+```
+
+</CodeGroup>
+
+## Verify Installation
+
+After installation, verify that the package is correctly installed:
+
+```python
+# Check if the package can be imported
+import password_generator
+print("Password Generator installed successfully!")
+```
+
+You can also test the installation by generating a password:
+
+```python
+from password_generator import password
+
+# Generate a test password
+result = password()
+print(f"Test password: {result}")
+```
+
+## Compatibility
+
+The package is compatible with:
+
+- **Operating Systems**: Windows, macOS, Linux, and other OS Independent platforms
+- **Python Versions**: 3.6, 3.7, 3.8, 3.9, 3.10, 3.11, 3.12+
+- **License**: Apache Software License 2.0
+
+## Troubleshooting
+
+### ImportError
+
+If you encounter an import error, ensure that:
+
+1. The package is installed in the correct Python environment
+2. You're using Python 3.6 or higher
+3. Your virtual environment is activated (if using one)
+
+```bash
+# Check installed packages
+pip list | grep password-generator
+
+# Check Python version
+python --version
+```
+
+### Permission Issues
+
+If you encounter permission errors during installation:
+
+```bash
+# Install for the current user only
+pip install --user edimez14-password-generator-1
+```

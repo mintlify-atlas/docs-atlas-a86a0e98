@@ -1,0 +1,78 @@
+---
+title: "Generate Password"
+api: "GET /api/password-generator/response-password/"
+---
+
+Generates a random secure password. This endpoint does not require authentication.
+
+## Endpoint
+
+```
+GET /api/password-generator/response-password/
+```
+
+## Authentication
+
+No authentication required.
+
+## Request
+
+This endpoint does not accept any parameters.
+
+## Response
+
+<ResponseField name="output" type="string" required>
+  The generated password string.
+</ResponseField>
+
+### Success Response
+
+```json
+{
+  "output": "aB3#xY9$mN2@pQ7!"
+}
+```
+
+### Error Responses
+
+<ResponseExample>
+```json 500 Internal Server Error
+{
+  "Error in script": "error details"
+}
+```
+</ResponseExample>
+
+<ResponseExample>
+```json 500 Server Error
+{
+  "error": "error message"
+}
+```
+</ResponseExample>
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.example.com/api/password-generator/response-password/
+```
+
+```javascript JavaScript
+fetch('https://api.example.com/api/password-generator/response-password/')
+  .then(response => response.json())
+  .then(data => console.log(data.output));
+```
+
+```python Python
+import requests
+
+response = requests.get('https://api.example.com/api/password-generator/response-password/')
+data = response.json()
+print(data['output'])
+```
+</CodeGroup>
+
+## Implementation Details
+
+This endpoint is implemented in `views.py:18` using the `response_password` view function. It calls the internal `password()` function to generate a secure random password and returns it in JSON format.

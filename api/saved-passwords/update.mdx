@@ -1,0 +1,143 @@
+---
+title: "Update Saved Password"
+api: "PUT /api/password-generator/view-all-saved-passwords/{pk}/update/"
+---
+
+Updates an existing saved password. Users can only update their own passwords.
+
+## Endpoint
+
+```
+PUT /api/password-generator/view-all-saved-passwords/{pk}/update/
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication. User must be logged in.
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="pk" type="integer" required>
+  The unique identifier (primary key) of the saved password to update.
+</ParamField>
+
+## Request Body
+
+All fields are optional. Only include the fields you want to update (partial update).
+
+<ParamField body="password_saved" type="string" optional>
+  The updated password (max 200 characters).
+</ParamField>
+
+<ParamField body="url" type="string" optional>
+  The updated URL (max 200 characters).
+</ParamField>
+
+<ParamField body="name_pages" type="string" optional>
+  The updated friendly name (max 200 characters).
+</ParamField>
+
+### Request Example
+
+```json
+{
+  "password_saved": "NewSecureP@ss789",
+  "name_pages": "Updated Example Website"
+}
+```
+
+## Response
+
+### Success Response
+
+```json 200 OK
+"data saved"
+```
+
+### Error Responses
+
+<ResponseExample>
+```json 400 Bad Request
+{
+  "url": ["Enter a valid URL."],
+  "password_saved": ["This field may not be blank."]
+}
+```
+</ResponseExample>
+
+<ResponseExample>
+```json 404 Not Found
+{
+  "error": "Password not found."
+}
+```
+</ResponseExample>
+
+<ResponseExample>
+```json 500 Internal Server Error
+{
+  "error": "error message"
+}
+```
+</ResponseExample>
+
+## Authorization
+
+Users can only update passwords they own. The endpoint automatically filters by the authenticated user, ensuring users cannot update other users' passwords.
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X PUT https://api.example.com/api/password-generator/view-all-saved-passwords/1/update/ \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "password_saved": "NewSecureP@ss789",
+    "name_pages": "Updated Example Website"
+  }'
+```
+
+```javascript JavaScript
+fetch('https://api.example.com/api/password-generator/view-all-saved-passwords/1/update/', {
+  method: 'PUT',
+  headers: {
+    'Authorization': 'Bearer YOUR_TOKEN',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    password_saved: 'NewSecureP@ss789',
+    name_pages: 'Updated Example Website'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+headers = {
+    'Authorization': 'Bearer YOUR_TOKEN',
+    'Content-Type': 'application/json'
+}
+
+data = {
+    'password_saved': 'NewSecureP@ss789',
+    'name_pages': 'Updated Example Website'
+}
+
+response = requests.put(
+    'https://api.example.com/api/password-generator/view-all-saved-passwords/1/update/',
+    headers=headers,
+    json=data
+)
+print(response.json())
+```
+</CodeGroup>
+
+## Implementation Details
+
+This endpoint is implemented in `views.py:90` using the `update_saved_password` view function. It supports partial updates through the `partial=True` parameter in the serializer, meaning you only need to send the fields you want to update.

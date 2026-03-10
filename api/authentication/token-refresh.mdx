@@ -1,0 +1,295 @@
+---
+title: 'Token Refresh'
+description: 'Obtain a new access token using a refresh token'
+api: 'POST /api/token/refresh/'
+---
+
+## Overview
+
+The token refresh endpoint allows you to obtain a new JWT access token using a valid refresh token. This is essential for maintaining long-lived sessions without requiring users to re-authenticate.
+
+## Endpoint
+
+```
+POST /api/token/refresh/
+```
+
+## Request Body
+
+<ParamField body="refresh" type="string" required>
+  The JWT refresh token received from sign-in or sign-up endpoints.
+</ParamField>
+
+## Response
+
+<ResponseField name="access" type="string">
+  A new JWT access token that can be used to authenticate API requests.
+</ResponseField>
+
+<ResponseField name="refresh" type="string" optional>
+  In some configurations, a new refresh token may also be returned. Check your JWT settings to determine if refresh token rotation is enabled.
+</ResponseField>
+
+## Example Request
+
+```bash cURL
+curl -X POST http://localhost:8000/api/token/refresh/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+  }'
+```
+
+```python Python
+import requests
+
+url = "http://localhost:8000/api/token/refresh/"
+payload = {
+    "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+}
+
+response = requests.post(url, json=payload)
+data = response.json()
+
+# Update stored access token
+new_access_token = data['access']
+```
+
+```javascript JavaScript
+const refreshToken = localStorage.getItem('refresh_token');
+
+fetch('http://localhost:8000/api/token/refresh/', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    refresh: refreshToken
+  })
+})
+.then(response => response.json())
+.then(data => {
+  // Update the access token
+  localStorage.setItem('access_token', data.access);
+});
+```
+
+## Example Response
+
+```json 200 OK
+{
+  "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNjQ2MjQ3NjAwLCJpYXQiOjE2NDYyNDQwMDAsImp0aSI6IjE5MmVkNDMyOGViYTQxNzM5NGU1ZjU5ZDI5MzA5ZDYxIiwidXNlcl9pZCI6MX0.hHx4L-lPl9VQfq7FzhwXKvzGiJlMZ4xDkLv7nF5Y6Yw"
+}
+```
+
+## Error Responses
+
+```json 401 Unauthorized - Invalid Token
+{
+  "detail": "Token is invalid or expired",
+  "code": "token_not_valid"
+}
+```
+
+```json 401 Unauthorized - Token Blacklisted
+{
+  "detail": "Token is blacklisted",
+  "code": "token_not_valid"
+}
+```
+
+```json 400 Bad Request - Missing Refresh Token
+{
+  "refresh": ["This field is required."]
+}
+```
+
+## Implementation Details
+
+This endpoint is provided by Django REST Framework SimpleJWT library. The configuration is set up in `backend/urls.py:16`:
+
+```python
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+
+urlpatterns = [
+    path('api/token/', TokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('api/token/refresh/', TokenRefreshView.as_view(), name='token_refresh'),
+    # ... other paths
+]
+```
+
+## Token Lifecycle
+
+### 1. Initial Authentication
+
+When a user signs in or signs up, they receive both tokens:
+- **Access Token**: Short-lived (typically 5-60 minutes)
+- **Refresh Token**: Long-lived (typically days or weeks)
+
+### 2. Making API Requests
+
+Use the access token in the Authorization header:
+
+```
+Authorization: Bearer <access_token>
+```
+
+### 3. Access Token Expiration
+
+When an access token expires, API requests will return a 401 Unauthorized error.
+
+### 4. Token Refresh
+
+Instead of asking the user to log in again:
+1. Call `/api/token/refresh/` with the refresh token
+2. Receive a new access token
+3. Continue making authenticated requests
+
+### 5. Refresh Token Expiration
+
+When the refresh token expires, the user must sign in again.
+
+## Automatic Token Refresh Pattern
+
+Here's a recommended pattern for handling token refresh automatically:
+
+```javascript JavaScript - Axios Interceptor
+import axios from 'axios';
+
+const api = axios.create({
+  baseURL: 'http://localhost:8000/api'
+});
+
+// Add access token to requests
+api.interceptors.request.use(
+  config => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  error => Promise.reject(error)
+);
+
+// Refresh token on 401 errors
+api.interceptors.response.use(
+  response => response,
+  async error => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        const refreshToken = localStorage.getItem('refresh_token');
+        const response = await axios.post(
+          'http://localhost:8000/api/token/refresh/',
+          { refresh: refreshToken }
+        );
+
+        const { access } = response.data;
+        localStorage.setItem('access_token', access);
+
+        // Retry original request with new token
+        originalRequest.headers.Authorization = `Bearer ${access}`;
+        return api(originalRequest);
+      } catch (refreshError) {
+        // Refresh token is invalid, redirect to login
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+export default api;
+```
+
+```python Python - Request Wrapper
+import requests
+from typing import Dict, Optional
+
+class APIClient:
+    def __init__(self, base_url: str):
+        self.base_url = base_url
+        self.access_token: Optional[str] = None
+        self.refresh_token: Optional[str] = None
+
+    def _refresh_access_token(self) -> bool:
+        """Refresh the access token using the refresh token."""
+        if not self.refresh_token:
+            return False
+
+        try:
+            response = requests.post(
+                f"{self.base_url}/token/refresh/",
+                json={"refresh": self.refresh_token}
+            )
+            response.raise_for_status()
+            self.access_token = response.json()['access']
+            return True
+        except requests.exceptions.RequestException:
+            return False
+
+    def request(self, method: str, endpoint: str, **kwargs) -> requests.Response:
+        """Make an authenticated request with automatic token refresh."""
+        headers = kwargs.pop('headers', {})
+        if self.access_token:
+            headers['Authorization'] = f'Bearer {self.access_token}'
+
+        response = requests.request(
+            method,
+            f"{self.base_url}{endpoint}",
+            headers=headers,
+            **kwargs
+        )
+
+        # If unauthorized, try refreshing token and retry
+        if response.status_code == 401 and self._refresh_access_token():
+            headers['Authorization'] = f'Bearer {self.access_token}'
+            response = requests.request(
+                method,
+                f"{self.base_url}{endpoint}",
+                headers=headers,
+                **kwargs
+            )
+
+        return response
+```
+
+## Security Best Practices
+
+1. **Secure Storage**: Store tokens securely
+   - In browsers: Use httpOnly cookies or secure storage mechanisms
+   - In mobile apps: Use secure storage APIs (Keychain, KeyStore)
+   - Never store tokens in localStorage in production for sensitive applications
+
+2. **Token Expiration**: Configure appropriate token lifetimes in your Django settings
+   ```python
+   from datetime import timedelta
+
+   SIMPLE_JWT = {
+       'ACCESS_TOKEN_LIFETIME': timedelta(minutes=15),
+       'REFRESH_TOKEN_LIFETIME': timedelta(days=7),
+   }
+   ```
+
+3. **HTTPS Only**: Always use HTTPS in production to prevent token interception
+
+4. **Token Revocation**: Consider implementing token blacklisting for logout functionality
+
+## Notes
+
+- This endpoint is provided by `rest_framework_simplejwt.views.TokenRefreshView`
+- The endpoint does not require authentication (the refresh token itself serves as authentication)
+- Refresh tokens are typically longer-lived than access tokens
+- If a refresh token is expired or invalid, the user must sign in again
+- The response may include a new refresh token if token rotation is enabled in settings

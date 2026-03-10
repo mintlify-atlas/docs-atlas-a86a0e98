@@ -1,0 +1,148 @@
+---
+title: 'Get User Profile'
+api: 'POST /api/profile/'
+description: 'Retrieve the authenticated user profile information'
+---
+
+## Overview
+
+This endpoint returns the profile information for the currently authenticated user. Authentication is required via JWT token.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT access token in the Authorization header:
+
+```
+Authorization: Bearer <access_token>
+```
+
+## Request
+
+### Endpoint
+
+```
+POST /api/profile/
+```
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Authorization | Bearer {token} | Yes |
+| Content-Type | application/json | Yes |
+
+### Request Body
+
+No request body required. The user is identified from the authentication token.
+
+## Response
+
+### Success Response (200 OK)
+
+Returns the user profile data serialized using `UsersSerializer`:
+
+```json
+{
+  "id": 1,
+  "username": "john_doe",
+  "email": "john@example.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "number_phone": "1234567890",
+  "avatar": "/media/avatars/profile.jpg",
+  "date_joined": "2024-01-15T10:30:00Z",
+  "last_login": "2024-03-10T14:20:00Z",
+  "is_active": true,
+  "is_staff": false,
+  "is_superuser": false
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | integer | Unique user identifier |
+| username | string | User's username (inherited from AbstractUser) |
+| email | string | User's email address (unique, max 200 chars) |
+| first_name | string | User's first name (max 200 chars, optional) |
+| last_name | string | User's last name (max 200 chars, optional) |
+| number_phone | string | User's phone number (max 10 chars, optional) |
+| avatar | string | URL path to user's avatar image (optional) |
+| date_joined | datetime | When the user account was created |
+| last_login | datetime | Last login timestamp |
+| is_active | boolean | Whether the user account is active |
+| is_staff | boolean | Whether user has staff privileges |
+| is_superuser | boolean | Whether user has superuser privileges |
+
+### Error Responses
+
+#### 401 Unauthorized
+
+Returned when the authentication token is missing or invalid:
+
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+#### 404 Not Found
+
+Returned when the authenticated user cannot be found in the database:
+
+```json
+{
+  "error": "The user cannot be found in the database."
+}
+```
+
+#### 500 Internal Server Error
+
+Returned when an unexpected error occurs:
+
+```json
+{
+  "error": "Error message details"
+}
+```
+
+## Example Request
+
+```bash
+curl -X POST https://api.example.com/api/profile/ \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json"
+```
+
+## Example Response
+
+```json
+{
+  "id": 42,
+  "username": "alice_wonder",
+  "email": "alice@example.com",
+  "first_name": "Alice",
+  "last_name": "Wonder",
+  "number_phone": "5551234567",
+  "avatar": "/media/avatars/alice.png",
+  "date_joined": "2024-02-01T08:15:30Z",
+  "last_login": "2024-03-10T11:45:22Z",
+  "is_active": true,
+  "is_staff": false,
+  "is_superuser": false
+}
+```
+
+## Implementation Details
+
+This endpoint is implemented in `/apps/users/views.py:84` as the `profile` function view:
+
+- Decorated with `@permission_classes([IsAuthenticated])` to require authentication
+- Uses `UsersSerializer` to serialize the user data from `request.user`
+- Returns all fields from the Users model (which extends Django's AbstractUser)
+
+## Related Endpoints
+
+- [Update Profile](/api/users/update) - Update user profile information
+- [Delete User](/api/users/delete) - Delete user account

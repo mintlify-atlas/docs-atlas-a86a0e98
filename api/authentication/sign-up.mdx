@@ -1,0 +1,228 @@
+---
+title: 'Sign Up'
+description: 'Create a new user account and receive JWT authentication tokens'
+api: 'POST /api/sign-up/'
+---
+
+## Overview
+
+The sign-up endpoint creates a new user account in the Password Generator application. Upon successful registration, the endpoint returns JWT access and refresh tokens along with the user's information.
+
+## Endpoint
+
+```
+POST /api/sign-up/
+```
+
+## Request Body
+
+<ParamField body="username" type="string" required>
+  Unique username for the account. This field is required by Django's AbstractUser model.
+</ParamField>
+
+<ParamField body="email" type="string" required>
+  User's email address. Must be unique in the system.
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  User's password. Will be securely hashed using Django's password hashing system.
+</ParamField>
+
+<ParamField body="first_name" type="string" optional>
+  User's first name. Defaults to empty string if not provided.
+</ParamField>
+
+<ParamField body="last_name" type="string" optional>
+  User's last name. Defaults to empty string if not provided.
+</ParamField>
+
+<ParamField body="number_phone" type="string" optional>
+  User's phone number. Maximum 10 characters. Can be null.
+</ParamField>
+
+## Response
+
+<ResponseField name="access" type="string">
+  JWT access token used for authenticating API requests. Short-lived token.
+</ResponseField>
+
+<ResponseField name="refresh" type="string">
+  JWT refresh token used to obtain new access tokens when they expire.
+</ResponseField>
+
+<ResponseField name="user" type="object">
+  User object containing the created user's information.
+  
+  <ResponseField name="user.id" type="integer">
+    Unique identifier for the user.
+  </ResponseField>
+  
+  <ResponseField name="user.username" type="string">
+    User's username.
+  </ResponseField>
+  
+  <ResponseField name="user.email" type="string">
+    User's email address.
+  </ResponseField>
+  
+  <ResponseField name="user.first_name" type="string">
+    User's first name.
+  </ResponseField>
+  
+  <ResponseField name="user.last_name" type="string">
+    User's last name.
+  </ResponseField>
+  
+  <ResponseField name="user.number_phone" type="string">
+    User's phone number.
+  </ResponseField>
+  
+  <ResponseField name="user.avatar" type="string">
+    URL to user's avatar image (if uploaded).
+  </ResponseField>
+</ResponseField>
+
+## Example Request
+
+```bash cURL
+curl -X POST http://localhost:8000/api/sign-up/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "johndoe",
+    "email": "john@example.com",
+    "password": "SecurePass123!",
+    "first_name": "John",
+    "last_name": "Doe",
+    "number_phone": "5551234567"
+  }'
+```
+
+```python Python
+import requests
+
+url = "http://localhost:8000/api/sign-up/"
+payload = {
+    "username": "johndoe",
+    "email": "john@example.com",
+    "password": "SecurePass123!",
+    "first_name": "John",
+    "last_name": "Doe",
+    "number_phone": "5551234567"
+}
+
+response = requests.post(url, json=payload)
+data = response.json()
+```
+
+```javascript JavaScript
+fetch('http://localhost:8000/api/sign-up/', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json',
+  },
+  body: JSON.stringify({
+    username: 'johndoe',
+    email: 'john@example.com',
+    password: 'SecurePass123!',
+    first_name: 'John',
+    last_name: 'Doe',
+    number_phone: '5551234567'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+```
+
+## Example Response
+
+```json 201 Created
+{
+  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "access": "eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...",
+  "user": {
+    "id": 1,
+    "username": "johndoe",
+    "email": "john@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "number_phone": "5551234567",
+    "avatar": null
+  }
+}
+```
+
+## Error Responses
+
+```json 400 Bad Request - Missing Fields
+{
+  "error": "Missing required fields."
+}
+```
+
+```json 400 Bad Request - Validation Error
+{
+  "username": ["This field is required."],
+  "email": ["user with this email already exists."]
+}
+```
+
+```json 500 Internal Server Error
+{
+  "error": "Error message details"
+}
+```
+
+## Implementation Details
+
+The sign-up endpoint is implemented in `apps/users/views.py:49-79`. Here's how it works:
+
+1. **Validation**: The request data is validated against the `UsersSerializer`
+2. **User Creation**: If valid, a new user is created with the provided data
+3. **Password Hashing**: The password is securely hashed using `user.set_password()`
+4. **Token Generation**: JWT tokens are generated using `RefreshToken.for_user(user)`
+5. **Response**: Returns both tokens and the complete user object
+
+### Code Reference
+
+From `apps/users/views.py:49-79`:
+
+```python
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def sign_up(request):
+    try:
+        serializer = UsersSerializer(data=request.data)
+
+        if serializer.is_valid():
+            serializer.save()
+
+            user = Users.objects.get(username=serializer.data['username'])
+            user.email = serializer.data['email']
+            user.set_password(serializer.data['password'])
+            user.first_name = serializer.data['first_name']
+            user.last_name = serializer.data['last_name']
+            user.number_phone = serializer.data['number_phone']
+            user.save()
+
+            refresh = RefreshToken.for_user(user)
+
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': serializer.data
+            }, status=status.HTTP_201_CREATED)
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    except KeyError:
+        return Response({'error': 'Missing required fields.'}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+```
+
+## Notes
+
+- This endpoint does not require authentication (`@permission_classes([AllowAny])`)
+- The password is automatically hashed and never stored in plain text
+- Both access and refresh tokens are returned immediately upon successful registration
+- The user model extends Django's `AbstractUser` (defined in `apps/users/models.py:5`)

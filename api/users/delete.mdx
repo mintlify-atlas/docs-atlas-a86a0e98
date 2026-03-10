@@ -1,0 +1,165 @@
+---
+title: 'Delete User Account'
+api: 'DELETE /api/profile/{user_id}/delete/'
+description: 'Permanently delete a user account and all associated data'
+---
+
+## Overview
+
+This endpoint permanently deletes a user account from the system. This action is irreversible and will cascade to delete all associated data including generated passwords linked to the user.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT access token in the Authorization header:
+
+```
+Authorization: Bearer <access_token>
+```
+
+## Authorization
+
+Authentication is required but the current implementation does not explicitly verify that the authenticated user matches the `user_id` being deleted. This means proper authorization checks should be implemented at the application level or added to the view logic.
+
+## Request
+
+### Endpoint
+
+```
+DELETE /api/profile/{user_id}/delete/
+```
+
+### Path Parameters
+
+| Parameter | Type | Description | Required |
+|-----------|------|-------------|----------|
+| user_id | integer | The ID of the user to delete | Yes |
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Authorization | Bearer {token} | Yes |
+
+### Request Body
+
+No request body required.
+
+## Response
+
+### Success Response (204 No Content)
+
+Returns a success message when the user is deleted:
+
+```json
+{
+  "message": "User deleted successfully"
+}
+```
+
+Note: Despite the 204 status code suggesting no content, this endpoint returns a JSON response with a success message.
+
+### Error Responses
+
+#### 401 Unauthorized
+
+Returned when the authentication token is missing or invalid:
+
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+#### 404 Not Found
+
+Returned when the user ID doesn't exist:
+
+```json
+{
+  "detail": "Not found."
+}
+```
+
+#### 500 Internal Server Error
+
+Returned when an unexpected error occurs during deletion:
+
+```json
+{
+  "error": "Error message details"
+}
+```
+
+## Example Request
+
+```bash
+curl -X DELETE https://api.example.com/api/profile/42/delete/ \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json"
+```
+
+## Example Response
+
+```json
+{
+  "message": "User deleted successfully"
+}
+```
+
+## Implementation Details
+
+This endpoint is implemented in `/apps/users/views.py:123` as the `delete_user` function view:
+
+- Decorated with `@permission_classes([IsAuthenticated])` to require authentication
+- Uses `get_object_or_404` to retrieve the user by ID (returns 404 if not found)
+- Calls `user.delete()` which triggers Django's cascading deletion
+- Returns a 204 No Content status with a success message
+
+## Cascading Deletion
+
+When a user is deleted, Django's ORM will automatically handle cascading deletions for related objects based on the foreign key relationships defined in the models. This typically includes:
+
+- **Generated Passwords**: All passwords created by the user will be deleted
+- **User Sessions**: Active authentication sessions will be invalidated
+- **Media Files**: Note that avatar images in the filesystem may need manual cleanup
+
+## Security Considerations
+
+1. **Authorization**: The current implementation requires authentication but does not verify that the authenticated user matches the `user_id` being deleted. Consider adding this check:
+   ```python
+   if user != request.user and not request.user.is_staff:
+       return Response({"error": "Not authorized"}, status=403)
+   ```
+
+2. **Soft Delete**: Consider implementing soft deletion (marking users as inactive) instead of permanent deletion to maintain data integrity and audit trails.
+
+3. **Confirmation**: In a production environment, consider requiring additional confirmation (like password verification) before allowing account deletion.
+
+4. **Audit Logging**: Log user deletion events for security and compliance purposes.
+
+## Best Practices
+
+- **User Confirmation**: Always require explicit user confirmation in the UI before calling this endpoint
+- **Data Export**: Offer users the ability to export their data before deletion
+- **Grace Period**: Consider implementing a grace period where accounts are deactivated first and permanently deleted after a waiting period
+- **Notification**: Send email notifications to users confirming the account deletion
+
+## Important Warnings
+
+<Warning>
+This action is **permanent and irreversible**. Once a user account is deleted:
+- All user data is permanently removed from the database
+- All generated passwords associated with the user are deleted
+- The user will need to create a new account to use the service again
+- Historical data cannot be recovered
+</Warning>
+
+<Warning>
+The current implementation does not verify that the authenticated user matches the user being deleted. Ensure proper authorization checks are in place to prevent unauthorized account deletions.
+</Warning>
+
+## Related Endpoints
+
+- [Get Profile](/api/users/profile) - Retrieve user profile information
+- [Update Profile](/api/users/update) - Update user profile information
+- [Sign Up](/api/authentication/sign-up) - Create a new user account

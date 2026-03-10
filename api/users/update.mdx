@@ -1,0 +1,254 @@
+---
+title: 'Update User Profile'
+api: 'PUT /api/profile/{id}/update/'
+description: 'Update the authenticated user profile information including avatar upload'
+---
+
+## Overview
+
+This endpoint allows authenticated users to update their profile information. Users can only update their own profile. Supports partial updates and avatar image uploads.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid JWT access token in the Authorization header:
+
+```
+Authorization: Bearer <access_token>
+```
+
+## Authorization
+
+Users can only update their own profile. The authenticated user must match the user ID in the URL path, otherwise a 403 Forbidden error is returned.
+
+## Request
+
+### Endpoint
+
+```
+PUT /api/profile/{id}/update/
+```
+
+### Path Parameters
+
+| Parameter | Type | Description | Required |
+|-----------|------|-------------|----------|
+| id | integer | The user ID (must match authenticated user) | Yes |
+
+### Headers
+
+| Header | Value | Required |
+|--------|-------|----------|
+| Authorization | Bearer {token} | Yes |
+| Content-Type | application/json or multipart/form-data | Yes |
+
+### Request Body
+
+Supports partial updates. All fields are optional:
+
+```json
+{
+  "first_name": "John",
+  "last_name": "Doe",
+  "email": "john.doe@example.com",
+  "number_phone": "1234567890",
+  "username": "john_doe_updated"
+}
+```
+
+### Avatar Upload
+
+To upload an avatar, use `multipart/form-data` encoding and include the `avatar` file field:
+
+```bash
+curl -X PUT https://api.example.com/api/profile/1/update/ \
+  -H "Authorization: Bearer <token>" \
+  -F "avatar=@/path/to/image.jpg" \
+  -F "first_name=John" \
+  -F "last_name=Doe"
+```
+
+### Request Fields
+
+| Field | Type | Description | Constraints |
+|-------|------|-------------|-------------|
+| username | string | User's username | Optional, unique |
+| email | string | User's email address | Optional, unique, max 200 chars |
+| first_name | string | User's first name | Optional, max 200 chars |
+| last_name | string | User's last name | Optional, max 200 chars |
+| number_phone | string | User's phone number | Optional, max 10 chars |
+| avatar | file | Profile image file | Optional, image file (jpg, png, etc.) |
+
+## Response
+
+### Success Response (200 OK)
+
+Returns the updated user profile data:
+
+```json
+{
+  "id": 1,
+  "username": "john_doe_updated",
+  "email": "john.doe@example.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "number_phone": "1234567890",
+  "avatar": "/media/avatars/image.jpg",
+  "date_joined": "2024-01-15T10:30:00Z",
+  "last_login": "2024-03-10T14:20:00Z",
+  "is_active": true,
+  "is_staff": false,
+  "is_superuser": false
+}
+```
+
+### Response Fields
+
+| Field | Type | Description |
+|-------|------|-------------|
+| id | integer | Unique user identifier |
+| username | string | User's username |
+| email | string | User's email address |
+| first_name | string | User's first name |
+| last_name | string | User's last name |
+| number_phone | string | User's phone number |
+| avatar | string | URL path to user's avatar image |
+| date_joined | datetime | When the user account was created |
+| last_login | datetime | Last login timestamp |
+| is_active | boolean | Whether the user account is active |
+| is_staff | boolean | Whether user has staff privileges |
+| is_superuser | boolean | Whether user has superuser privileges |
+
+### Error Responses
+
+#### 400 Bad Request
+
+Returned when the request data is invalid:
+
+```json
+{
+  "email": [
+    "This field must be a valid email address."
+  ],
+  "username": [
+    "A user with that username already exists."
+  ]
+}
+```
+
+#### 401 Unauthorized
+
+Returned when the authentication token is missing or invalid:
+
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+#### 403 Forbidden
+
+Returned when the authenticated user tries to update another user's profile:
+
+```json
+{
+  "error": "Not authorized"
+}
+```
+
+#### 404 Not Found
+
+Returned when the user ID doesn't exist:
+
+```json
+{
+  "detail": "Not found."
+}
+```
+
+#### 500 Internal Server Error
+
+Returned when an unexpected error occurs:
+
+```json
+{
+  "error": "Error message details"
+}
+```
+
+## Example Requests
+
+### Update Basic Information (JSON)
+
+```bash
+curl -X PUT https://api.example.com/api/profile/42/update/ \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "first_name": "Alice",
+    "last_name": "Wonderland",
+    "number_phone": "5559876543"
+  }'
+```
+
+### Update with Avatar Upload (Multipart)
+
+```bash
+curl -X PUT https://api.example.com/api/profile/42/update/ \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -F "avatar=@profile_pic.jpg" \
+  -F "first_name=Alice" \
+  -F "last_name=Wonderland"
+```
+
+### Partial Update (Single Field)
+
+```bash
+curl -X PUT https://api.example.com/api/profile/42/update/ \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..." \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "newemail@example.com"
+  }'
+```
+
+## Example Response
+
+```json
+{
+  "id": 42,
+  "username": "alice_wonder",
+  "email": "alice.wonderland@example.com",
+  "first_name": "Alice",
+  "last_name": "Wonderland",
+  "number_phone": "5559876543",
+  "avatar": "/media/avatars/alice_updated.jpg",
+  "date_joined": "2024-02-01T08:15:30Z",
+  "last_login": "2024-03-10T11:45:22Z",
+  "is_active": true,
+  "is_staff": false,
+  "is_superuser": false
+}
+```
+
+## Implementation Details
+
+This endpoint is implemented in `/apps/users/views.py:97` as the `update_profile` function view:
+
+- Decorated with `@permission_classes([IsAuthenticated])` to require authentication
+- Verifies that `request.user` matches the user being updated (authorization check)
+- Supports `MultiPartParser` and `FormParser` for file uploads
+- Handles avatar file uploads separately before serializer validation
+- Uses `UsersSerializer` with `partial=True` to allow partial updates
+- Returns updated user data on success
+
+## Notes
+
+- Partial updates are supported - you only need to include fields you want to change
+- Avatar images are uploaded to the `media/avatars/` directory
+- Email and username must remain unique across all users
+- The endpoint uses PUT method but supports partial updates (PATCH-like behavior)
+
+## Related Endpoints
+
+- [Get Profile](/api/users/profile) - Retrieve user profile information
+- [Delete User](/api/users/delete) - Delete user account

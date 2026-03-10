@@ -1,0 +1,143 @@
+---
+title: "List Saved Passwords"
+api: "GET /api/password-generator/view-all-saved-passwords/"
+---
+
+Retrieves all passwords saved by the authenticated user.
+
+## Endpoint
+
+```
+GET /api/password-generator/view-all-saved-passwords/
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication. User must be logged in.
+</ParamField>
+
+## Request
+
+This endpoint does not accept any parameters. It automatically filters passwords for the authenticated user.
+
+## Response
+
+<ResponseField name="message" type="string" required>
+  A message indicating the user whose passwords are being retrieved.
+</ResponseField>
+
+<ResponseField name="passwords" type="array" required>
+  Array of saved password objects.
+  
+  <Expandable title="Password Object">
+    <ResponseField name="id" type="integer">
+      Unique identifier for the saved password.
+    </ResponseField>
+    
+    <ResponseField name="name_pages" type="string">
+      Friendly name for the page or service.
+    </ResponseField>
+    
+    <ResponseField name="url" type="string">
+      The URL where this password is used.
+    </ResponseField>
+    
+    <ResponseField name="password_saved" type="string">
+      The saved password.
+    </ResponseField>
+    
+    <ResponseField name="user" type="integer">
+      The user ID who owns this password.
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Success Response
+
+```json 200 OK
+{
+  "message": "Passwords saved by the user john_doe: ",
+  "passwords": [
+    {
+      "id": 1,
+      "name_pages": "Example Website",
+      "url": "https://example.com",
+      "password_saved": "MySecureP@ss123",
+      "user": 1
+    },
+    {
+      "id": 2,
+      "name_pages": "Test Site",
+      "url": "https://test.com",
+      "password_saved": "AnotherP@ss456",
+      "user": 1
+    }
+  ]
+}
+```
+
+### Error Responses
+
+<ResponseExample>
+```json 400 Bad Request
+{
+  "error": "Missing required fields."
+}
+```
+</ResponseExample>
+
+<ResponseExample>
+```json 404 Not Found
+{
+  "error": "password does not exist after creation."
+}
+```
+</ResponseExample>
+
+<ResponseExample>
+```json 500 Internal Server Error
+{
+  "error": "error message"
+}
+```
+</ResponseExample>
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X GET https://api.example.com/api/password-generator/view-all-saved-passwords/ \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+fetch('https://api.example.com/api/password-generator/view-all-saved-passwords/', {
+  method: 'GET',
+  headers: {
+    'Authorization': 'Bearer YOUR_TOKEN'
+  }
+})
+.then(response => response.json())
+.then(data => console.log(data.passwords));
+```
+
+```python Python
+import requests
+
+headers = {
+    'Authorization': 'Bearer YOUR_TOKEN'
+}
+
+response = requests.get(
+    'https://api.example.com/api/password-generator/view-all-saved-passwords/',
+    headers=headers
+)
+data = response.json()
+print(data['passwords'])
+```
+</CodeGroup>
+
+## Implementation Details
+
+This endpoint is implemented in `views.py:64` using the `view_all_saved_passwords` view function. It filters the SavedPasswords model by the authenticated user and serializes the results using `SavedPasswordsSerializer`.

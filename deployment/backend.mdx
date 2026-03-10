@@ -1,0 +1,483 @@
+---
+title: 'Backend Deployment'
+description: 'Deploy the Django REST API backend for the Password Generator'
+icon: 'server'
+---
+
+## Overview
+
+The Password Generator backend is built with **Django 5.1** and **Django REST Framework**. It provides JWT authentication, password generation APIs, and user management.
+
+## Prerequisites
+
+- Python 3.10 or higher
+- PostgreSQL database (for production)
+- pip package manager
+- Git
+
+## Dependencies
+
+The backend requires the following Python packages:
+
+```txt requirements.txt
+asgiref==3.8.1
+Brotli==1.1.0
+certifi==2024.8.30
+charset-normalizer==3.4.0
+click==8.1.7
+coreapi==2.3.3
+coreschema==0.0.4
+dj-database-url==2.3.0
+Django==5.1.1
+django-ckeditor==6.7.1
+django-cors-headers==4.4.0
+django-environ==0.11.2
+django-js-asset==2.2.0
+django-storages==1.14.4
+djangorestframework==3.15.2
+djangorestframework-simplejwt==5.3.1
+edimez14-password-generator-1==0.6
+gunicorn==23.0.0
+h11==0.14.0
+idna==3.10
+itypes==1.2.0
+Jinja2==3.1.4
+MarkupSafe==3.0.2
+packaging==24.2
+pillow==10.4.0
+psycopg2==2.9.9
+psycopg2-binary==2.9.10
+PyJWT==2.9.0
+requests==2.32.3
+sqlparse==0.5.1
+typing_extensions==4.12.2
+uritemplate==4.1.1
+urllib3==2.2.3
+uvicorn==0.32.0
+whitenoise==6.7.0
+```
+
+## Installation
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone <repository-url>
+    cd v_web_app/backend
+    ```
+  </Step>
+
+  <Step title="Create a virtual environment">
+    ```bash
+    python -m venv venv
+    source venv/bin/activate  # On Windows: venv\Scripts\activate
+    ```
+  </Step>
+
+  <Step title="Install dependencies">
+    ```bash
+    pip install --upgrade pip
+    pip install -r requirements.txt
+    ```
+  </Step>
+
+  <Step title="Configure environment variables">
+    Create a `.env` file in the backend directory. See the [Environment Configuration](/deployment/environment) page for details.
+
+    ```bash .env
+    SECRET_KEY=your-secret-key-here
+    DEBUG=False
+    DATABASE_URL=postgresql://user:password@localhost:5432/dbname
+    ALLOWED_HOSTS_DEPLOY=yourdomain.com,www.yourdomain.com
+    CORS_ALLOWED_ORIGINS_DEPLOY=https://yourdomain.com,https://www.yourdomain.com
+    CSRF_TRUSTED_ORIGINS_DEPLOY=https://yourdomain.com,https://www.yourdomain.com
+    ```
+  </Step>
+</Steps>
+
+## Database Setup
+
+### Development (SQLite)
+
+For local development, Django uses SQLite by default:
+
+```python settings.py
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
+}
+```
+
+### Production (PostgreSQL)
+
+For production, configure PostgreSQL:
+
+<Steps>
+  <Step title="Install PostgreSQL">
+    ```bash
+    # Ubuntu/Debian
+    sudo apt-get update
+    sudo apt-get install postgresql postgresql-contrib
+
+    # macOS
+    brew install postgresql
+    ```
+  </Step>
+
+  <Step title="Create database and user">
+    ```bash
+    sudo -u postgres psql
+    ```
+
+    ```sql
+    CREATE DATABASE password_generator;
+    CREATE USER pguser WITH PASSWORD 'your-password';
+    ALTER ROLE pguser SET client_encoding TO 'utf8';
+    ALTER ROLE pguser SET default_transaction_isolation TO 'read committed';
+    ALTER ROLE pguser SET timezone TO 'America/Bogota';
+    GRANT ALL PRIVILEGES ON DATABASE password_generator TO pguser;
+    \q
+    ```
+  </Step>
+
+  <Step title="Set DATABASE_URL">
+    Add to your `.env` file:
+
+    ```bash
+    DATABASE_URL=postgresql://pguser:your-password@localhost:5432/password_generator
+    ```
+  </Step>
+</Steps>
+
+## Database Migration
+
+<Steps>
+  <Step title="Run migrations">
+    ```bash
+    python manage.py migrate
+    ```
+  </Step>
+
+  <Step title="Create a superuser">
+    ```bash
+    python manage.py createsuperuser
+    ```
+
+    Follow the prompts to create an admin account.
+  </Step>
+
+  <Step title="Collect static files">
+    ```bash
+    python manage.py collectstatic --noinput
+    ```
+  </Step>
+</Steps>
+
+## WSGI Configuration
+
+The application uses WSGI for synchronous requests:
+
+```python backend/wsgi.py
+import os
+from django.core.wsgi import get_wsgi_application
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
+application = get_wsgi_application()
+```
+
+## ASGI Configuration
+
+For asynchronous support, the application includes ASGI configuration:
+
+```python backend/asgi.py
+import os
+from django.core.asgi import get_asgi_application
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'backend.settings')
+application = get_asgi_application()
+```
+
+## Running the Server
+
+### Development Server
+
+```bash
+python manage.py runserver
+```
+
+The API will be available at `http://localhost:8000/api/`.
+
+### Production with Gunicorn
+
+<Steps>
+  <Step title="Install Gunicorn">
+    Already included in `requirements.txt`.
+  </Step>
+
+  <Step title="Run with Gunicorn (WSGI)">
+    ```bash
+    gunicorn --bind 0.0.0.0:8000 --workers 2 backend.wsgi:application
+    ```
+  </Step>
+
+  <Step title="Run with Gunicorn (ASGI with Uvicorn workers)">
+    For better async support:
+
+    ```bash
+    gunicorn --bind 0.0.0.0:8000 --workers 2 --worker-class uvicorn.workers.UvicornWorker backend.asgi:application
+    ```
+  </Step>
+</Steps>
+
+## Docker Deployment
+
+The project includes a production-ready Dockerfile:
+
+```dockerfile Dockerfile
+ARG PYTHON_VERSION=3.10-slim
+
+FROM python:${PYTHON_VERSION}
+
+ENV PYTHONDONTWRITEBYTECODE 1
+ENV PYTHONUNBUFFERED 1
+
+# Install psycopg2 dependencies
+RUN apt-get update && apt-get install -y \
+    libpq-dev \
+    gcc \
+    && rm -rf /var/lib/apt/lists/*
+
+RUN mkdir -p /code
+WORKDIR /code
+
+COPY requirements.txt /tmp/requirements.txt
+RUN set -ex && \
+    pip install --upgrade pip && \
+    pip install -r /tmp/requirements.txt && \
+    rm -rf /root/.cache/
+
+COPY . /code
+
+ENV SECRET_KEY "HcyHeNTropOt3ANlWa4scb9LQ7FE2rJey8SLbFrPSrTQXF5Bp0"
+RUN python manage.py collectstatic --noinput
+
+EXPOSE 8080
+
+CMD ["gunicorn","--bind",":8080","--workers","2","--worker-class","uvicorn.workers.UvicornWorker","backend.asgi"]
+```
+
+<Steps>
+  <Step title="Build the Docker image">
+    ```bash
+    docker build -t password-generator-backend .
+    ```
+  </Step>
+
+  <Step title="Run the container">
+    ```bash
+    docker run -p 8080:8080 \
+      -e SECRET_KEY=your-secret-key \
+      -e DEBUG=False \
+      -e DATABASE_URL=your-database-url \
+      password-generator-backend
+    ```
+  </Step>
+</Steps>
+
+## Fly.io Deployment
+
+The project includes configuration for Fly.io:
+
+```toml fly.toml
+app = 'password-generator-backend'
+primary_region = 'gru'
+console_command = '/code/manage.py shell'
+
+[build]
+  dockerfile = "Dockerfile"
+
+[deploy]
+  release_command = 'python manage.py migrate --noinput'
+
+[env]
+  PORT = '8080'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[vm]]
+  memory = '256mb'
+  cpus = 1
+
+[[statics]]
+  guest_path = '/code/static'
+  url_prefix = '/static/'
+```
+
+<Steps>
+  <Step title="Install Fly CLI">
+    ```bash
+    curl -L https://fly.io/install.sh | sh
+    ```
+  </Step>
+
+  <Step title="Login to Fly.io">
+    ```bash
+    fly auth login
+    ```
+  </Step>
+
+  <Step title="Create a Fly.io app">
+    ```bash
+    fly launch
+    ```
+  </Step>
+
+  <Step title="Set secrets">
+    ```bash
+    fly secrets set SECRET_KEY=your-secret-key
+    fly secrets set DATABASE_URL=your-database-url
+    fly secrets set DEBUG=False
+    fly secrets set ALLOWED_HOSTS_DEPLOY=your-app.fly.dev
+    fly secrets set CORS_ALLOWED_ORIGINS_DEPLOY=https://your-frontend.com
+    fly secrets set CSRF_TRUSTED_ORIGINS_DEPLOY=https://your-frontend.com
+    ```
+  </Step>
+
+  <Step title="Create a PostgreSQL database">
+    ```bash
+    fly postgres create
+    fly postgres attach <postgres-app-name>
+    ```
+  </Step>
+
+  <Step title="Deploy">
+    ```bash
+    fly deploy
+    ```
+
+    The release command will automatically run migrations.
+  </Step>
+</Steps>
+
+## Static Files Configuration
+
+The project uses **WhiteNoise** for serving static files:
+
+```python settings.py
+STATIC_URL = '/static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',  # Add after SecurityMiddleware
+    # ... other middleware
+]
+```
+
+## Health Checks
+
+Create a health check endpoint for monitoring:
+
+```python apps/password_generator/views.py
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def health_check(request):
+    return Response({'status': 'healthy'})
+```
+
+Add to `urls.py`:
+
+```python
+path('health/', health_check, name='health_check'),
+```
+
+## Monitoring and Logging
+
+### Configure Logging
+
+Add to `settings.py`:
+
+```python
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+}
+```
+
+## Troubleshooting
+
+### Database Connection Issues
+
+If you encounter database connection errors:
+
+```bash
+# Check PostgreSQL is running
+sudo systemctl status postgresql
+
+# Test connection
+psql -h localhost -U pguser -d password_generator
+```
+
+### Static Files Not Loading
+
+```bash
+# Recollect static files
+python manage.py collectstatic --clear --noinput
+```
+
+### CORS Errors
+
+Verify CORS settings in `.env`:
+
+```bash
+CORS_ALLOWED_ORIGINS_DEPLOY=https://your-frontend.com,https://www.your-frontend.com
+CSRF_TRUSTED_ORIGINS_DEPLOY=https://your-frontend.com,https://www.your-frontend.com
+```
+
+## Security Checklist
+
+<Check>
+  - Set `DEBUG=False` in production
+  - Use a strong, random `SECRET_KEY`
+  - Configure `ALLOWED_HOSTS` properly
+  - Use HTTPS (enable `SECURE_SSL_REDIRECT`)
+  - Set up CORS correctly
+  - Use PostgreSQL instead of SQLite
+  - Enable database SSL (`ssl_require=True`)
+  - Keep dependencies updated
+  - Use environment variables for secrets
+  - Set up rate limiting for APIs
+</Check>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Frontend Deployment" icon="react" href="./frontend">
+    Deploy the Next.js frontend
+  </Card>
+  <Card title="Environment Configuration" icon="gear" href="./environment">
+    Configure environment variables
+  </Card>
+</CardGroup>

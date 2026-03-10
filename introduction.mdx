@@ -1,0 +1,191 @@
+---
+title: Introduction
+description: A comprehensive password generation solution with console, web, and Python package implementations
+---
+
+## What is Password Generator?
+
+Password Generator is a full-featured password generation solution that demonstrates enterprise-grade backend logic, API integration, and modern frontend architecture. The project provides three distinct implementations:
+
+- **Python Package**: Installable library for programmatic password generation
+- **Console Application**: Command-line interface for quick password generation
+- **Full-Stack Web Application**: React/Next.js frontend with Django REST API backend
+
+<Note>
+  All generated passwords follow a secure format combining uppercase letters, lowercase letters, numbers, and special characters to maximize entropy.
+</Note>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Secure Password Generation" icon="lock">
+    Generates 10-character passwords with mixed case, numbers, and special characters using multiple randomization passes for enhanced security
+  </Card>
+  
+  <Card title="User Authentication" icon="user-shield">
+    JWT-based authentication system with registration, login, and profile management
+  </Card>
+  
+  <Card title="Password Management" icon="database">
+    Save, update, and delete passwords with associated metadata (site name, URL) for authenticated users
+  </Card>
+  
+  <Card title="Multiple Deployment Options" icon="server">
+    Use as a Python library, console tool, or full web application with REST API
+  </Card>
+</CardGroup>
+
+## Architecture Overview
+
+### Core Password Generation Logic
+
+The password generation algorithm uses an Object-Oriented Programming approach with three main components:
+
+1. **`list_elements` Class**: Manages character pools (numbers, letters, special characters)
+2. **`password_generator` Function**: Combines elements from multiple pools to create candidate passwords
+3. **`password` Function**: Orchestrates the generation process with randomized parameters
+
+The algorithm generates 50 candidate passwords in each run, ensuring uniqueness, then randomly selects one to return. This multi-pass approach significantly increases entropy.
+
+<CodeGroup>
+```python Password Generation Core
+def password_generator(list_num: list, list_str: list, list_char: list):
+    passwords = []
+    for i in range(50):
+        password = f"{random.choice(list_char)}{random.choice(list_num)}{random.choice(list_str)}{random.choice(list_char)}{random.choice(list_str).upper()}{random.choice(list_str)}{random.choice(list_num)}{random.choice(list_str)}{random.choice(list_str)}{random.choice(list_char)}"
+        if password not in passwords:
+            passwords.append(password)
+    chosen = random.choice(passwords)
+    return chosen
+```
+
+```python Element Selection
+class list_elements:
+    def __init__(self, element):
+        self.element = element
+
+    def select_num(self):
+        list_num = list(range(self.element))
+        list_num = random.sample(list_num, 50)
+        return list_num
+
+    def select_char(self):
+        chars = []
+        for i in range(5):
+            char = random.choice(self.element)
+            chars.append(char)
+        return list(set(chars))
+```
+</CodeGroup>
+
+### Web Application Architecture
+
+The web application follows a modern full-stack architecture:
+
+**Frontend Stack**
+- React.js with Next.js 14+ (App Router)
+- Tailwind CSS for styling
+- NextUI component library
+- Axios for API communication
+- Context API for authentication state
+
+**Backend Stack**
+- Django 4+ with Django REST Framework
+- SimpleJWT for token-based authentication
+- PostgreSQL/SQLite database
+- CORS headers for cross-origin requests
+
+**API Architecture**
+
+<Steps>
+  <Step title="Password Generation Endpoint">
+    `GET /api/response-password/` - Public endpoint that calls the core Python password generation logic
+  </Step>
+  
+  <Step title="Authentication Endpoints">
+    - `POST /api/sign-up/` - User registration
+    - `POST /api/sign-in/` - User login with JWT token response
+  </Step>
+  
+  <Step title="Password Management Endpoints (Protected)">
+    - `POST /api/save-password/` - Save password with metadata
+    - `GET /api/view-passwords/` - Retrieve user's saved passwords
+    - `PUT /api/update-password/{id}/` - Update saved password
+    - `DELETE /api/delete-password/{id}/` - Delete saved password
+  </Step>
+</Steps>
+
+### Data Models
+
+The application uses two primary models:
+
+<CodeGroup>
+```python User Model
+from django.contrib.auth.models import AbstractUser
+
+class Users(AbstractUser):
+    email = models.EmailField(max_length=200, unique=True)
+    first_name = models.CharField(max_length=200, blank=True, default='')
+    last_name = models.CharField(max_length=200, blank=True, default='')
+    number_phone = models.CharField(max_length=10, blank=True, null=True)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    
+    REQUIRED_FIELDS = ['email']
+```
+
+```python SavedPasswords Model
+class SavedPasswords(models.Model):
+    name_pages = models.CharField(max_length=200, blank=True)
+    url = models.URLField(max_length=200)
+    password_saved = models.CharField(max_length=200)
+    user = models.ForeignKey(
+        Users, on_delete=models.CASCADE, related_name="saved_passwords"
+    )
+```
+</CodeGroup>
+
+## Who Should Use This?
+
+<CardGroup cols={3}>
+  <Card title="Developers" icon="code">
+    Integrate secure password generation into applications using the Python package
+  </Card>
+  
+  <Card title="System Administrators" icon="terminal">
+    Use the console version for quick password generation in scripts and automation
+  </Card>
+  
+  <Card title="End Users" icon="users">
+    Access the web application for generating and managing passwords with a user-friendly interface
+  </Card>
+</CardGroup>
+
+<Warning>
+  This project is designed as a learning and demonstration tool. For production password management, consider additional security measures like encryption at rest, secure key storage, and regular security audits.
+</Warning>
+
+## Password Format
+
+Generated passwords follow this structure:
+- **Length**: 10 characters
+- **Composition**: Special character + number + lowercase + special character + uppercase + lowercase + number + lowercase + lowercase + special character
+- **Character Sets**: 
+  - Numbers: 0-9
+  - Letters: a-z (uppercase and lowercase)
+  - Special characters: `! " # $ % & ' ( ) * + , - . / : ; < = > ? @ [ ] ^ _ { | } ~ ¡ ¿ ° €` and backtick
+
+<Note>
+  Each password generation creates 50 unique candidates before randomly selecting one, ensuring high entropy and unpredictability.
+</Note>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Guide" icon="rocket" href="/quickstart">
+    Get started with Password Generator in minutes
+  </Card>
+  
+  <Card title="API Reference" icon="book" href="/api/password/generate">
+    Explore the complete API documentation
+  </Card>
+</CardGroup>

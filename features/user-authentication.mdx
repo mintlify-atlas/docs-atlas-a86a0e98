@@ -1,0 +1,347 @@
+---
+title: User Authentication
+description: Complete guide to JWT-based authentication including sign-up, sign-in, and token refresh mechanisms
+---
+
+## Overview
+
+The Password Generator uses JWT (JSON Web Token) authentication powered by Django REST Framework SimpleJWT. This provides secure, stateless authentication for both web and API clients.
+
+## Authentication Flow
+
+<Steps>
+  <Step title="User Sign-Up">
+    New users create an account with email, username, and password. The system returns access and refresh tokens immediately upon successful registration.
+  </Step>
+  <Step title="Token Storage">
+    The client stores the access token (short-lived) and refresh token (long-lived) securely, typically in sessionStorage or httpOnly cookies.
+  </Step>
+  <Step title="Authenticated Requests">
+    Include the access token in the Authorization header: `Bearer <token>`
+  </Step>
+  <Step title="Token Refresh">
+    When the access token expires, use the refresh token to obtain a new access token without requiring re-authentication.
+  </Step>
+</Steps>
+
+## Sign-Up Process
+
+New users register through the `/api/users/sign-up/` endpoint.
+
+### API Endpoint
+
+**URL**: `POST /api/users/sign-up/`
+
+**Authentication**: Not required (AllowAny)
+
+**Request Body**:
+```json
+{
+  "username": "johndoe",
+  "email": "john@example.com",
+  "password": "SecurePass123!",
+  "first_name": "John",
+  "last_name": "Doe",
+  "number_phone": "1234567890"
+}
+```
+
+**Response**:
+```json
+{
+  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "access": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "user": {
+    "id": 1,
+    "username": "johndoe",
+    "email": "john@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "number_phone": "1234567890"
+  }
+}
+```
+
+### Implementation
+
+The sign-up view is implemented in `views.py:47-79`:
+
+```python
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def sign_up(request):
+    try:
+        serializer = UsersSerializer(data=request.data)
+        
+        if serializer.is_valid():
+            serializer.save()
+            
+            user = Users.objects.get(username=serializer.data['username'])
+            user.email = serializer.data['email']
+            user.set_password(serializer.data['password'])
+            user.first_name = serializer.data['first_name']
+            user.last_name = serializer.data['last_name']
+            user.number_phone = serializer.data['number_phone']
+            user.save()
+            
+            refresh = RefreshToken.for_user(user)
+            
+            return Response({
+                'refresh': str(refresh),
+                'access': str(refresh.access_token),
+                'user': serializer.data
+            }, status=status.HTTP_201_CREATED)
+        
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+```
+
+<Note>
+The password is securely hashed using Django's `set_password()` method, which uses PBKDF2 by default.
+</Note>
+
+### Frontend Sign-Up
+
+The frontend implements sign-up with a React form component:
+
+```jsx
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  try {
+    const response = await SignUpUser(formData);
+    sessionStorage.setItem('authToken', response.data.access);
+    sessionStorage.setItem('user', JSON.stringify(response.data.user));
+    window.location.href = "/";
+  } catch (error) {
+    setErrorMessage(error.response.data.error || "Registration failed");
+  }
+};
+```
+
+## Sign-In Process
+
+Existing users authenticate through the `/api/users/sign-in/` endpoint.
+
+### API Endpoint
+
+**URL**: `POST /api/users/sign-in/`
+
+**Authentication**: Not required (AllowAny)
+
+**Request Body**:
+```json
+{
+  "email": "john@example.com",
+  "password": "SecurePass123!"
+}
+```
+
+**Response**:
+```json
+{
+  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "access": "eyJ0eXAiOiJKV1QiLCJhbGc...",
+  "user": {
+    "id": 1,
+    "username": "johndoe",
+    "email": "john@example.com",
+    "first_name": "John",
+    "last_name": "Doe"
+  }
+}
+```
+
+### Implementation
+
+The sign-in view is implemented in `views.py:21-44`:
+
+```python
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def sign_in(request):
+    try:
+        user = get_object_or_404(Users, email=request.data.get('email'))
+        
+        if not user.check_password(request.data.get('password')):
+            return Response({'error': 'Invalid password'}, status=status.HTTP_400_BAD_REQUEST)
+        
+        refresh = RefreshToken.for_user(user)
+        serializer = UsersSerializer(instance=user)
+        
+        return Response({
+            'refresh': str(refresh),
+            'access': str(refresh.access_token),
+            'user': serializer.data
+        }, status=status.HTTP_200_OK)
+    
+    except KeyError:
+        return Response({'error': 'Email and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+    except Users.DoesNotExist:
+        return Response({'error': 'User does not exist.'}, status=status.HTTP_404_NOT_FOUND)
+```
+
+### Frontend Sign-In
+
+The sign-in implementation (`SignInRequest.jsx:25-49`):
+
+```jsx
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  
+  if (!formData.email || !formData.password) {
+    setErrorMessage("You must enter both email and password");
+    return;
+  }
+  
+  try {
+    const response = await SignInUser(formData);
+    sessionStorage.setItem('authToken', response.data.access);
+    sessionStorage.setItem('user', JSON.stringify(response.data.user));
+    window.location.href = "/";
+  } catch (error) {
+    setErrorMessage(error.response.data.error || "Login failed");
+  }
+};
+```
+
+<Card title="Form Fields" icon="input-text">
+  The sign-in form includes email and password fields with NextUI Input components and validation feedback.
+</Card>
+
+## Token Refresh Mechanism
+
+SimpleJWT provides automatic token refresh capabilities. When the access token expires, use the refresh token to obtain a new one.
+
+### Refresh Token Endpoint
+
+**URL**: `POST /api/token/refresh/`
+
+**Request Body**:
+```json
+{
+  "refresh": "eyJ0eXAiOiJKV1QiLCJhbGc..."
+}
+```
+
+**Response**:
+```json
+{
+  "access": "eyJ0eXAiOiJKV1QiLCJhbGc..."
+}
+```
+
+### Token Lifecycle
+
+<CardGroup cols={2}>
+  <Card title="Access Token" icon="clock">
+    Short-lived token (typically 5-15 minutes) used for API requests
+  </Card>
+  <Card title="Refresh Token" icon="arrows-rotate">
+    Long-lived token (typically 1-7 days) used to obtain new access tokens
+  </Card>
+</CardGroup>
+
+### Client-Side Token Management
+
+```javascript
+// Store tokens after authentication
+sessionStorage.setItem('authToken', response.data.access);
+sessionStorage.setItem('refreshToken', response.data.refresh);
+
+// Include access token in API requests
+const config = {
+  headers: {
+    'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`
+  }
+};
+
+// Refresh token when access token expires
+const refreshAccessToken = async () => {
+  const refreshToken = sessionStorage.getItem('refreshToken');
+  const response = await axios.post('/api/token/refresh/', {
+    refresh: refreshToken
+  });
+  sessionStorage.setItem('authToken', response.data.access);
+};
+```
+
+## Protected Endpoints
+
+Many endpoints require authentication using the `@permission_classes([IsAuthenticated])` decorator:
+
+```python
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def save_passwords(request):
+    # Only accessible with valid access token
+    user = request.user
+    # ...
+```
+
+### Making Authenticated Requests
+
+**cURL Example**:
+```bash
+curl -X GET http://localhost:8000/api/passwords/saved/ \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGc..."
+```
+
+**JavaScript Example**:
+```javascript
+const response = await fetch('/api/passwords/saved/', {
+  headers: {
+    'Authorization': `Bearer ${sessionStorage.getItem('authToken')}`,
+    'Content-Type': 'application/json'
+  }
+});
+```
+
+## User Model
+
+The custom user model extends Django's AbstractUser (`models.py:5-16`):
+
+```python
+class Users(AbstractUser):
+    email = models.EmailField(max_length=200, unique=True)
+    first_name = models.CharField(max_length=200, blank=True, default='')
+    last_name = models.CharField(max_length=200, blank=True, default='')
+    number_phone = models.CharField(max_length=10, blank=True, null=True)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    
+    REQUIRED_FIELDS = ['email']
+```
+
+<Note>
+The email field is unique and required for authentication, serving as the primary identifier for login.
+</Note>
+
+## Error Handling
+
+The authentication views provide detailed error responses:
+
+| Error Scenario | HTTP Status | Response |
+|---------------|-------------|----------|
+| Missing credentials | 400 | `{"error": "Email and password are required."}` |
+| Invalid password | 400 | `{"error": "Invalid password"}` |
+| User not found | 404 | `{"error": "User does not exist."}` |
+| Server error | 500 | `{"error": "<error message>"}` |
+
+## Security Best Practices
+
+<Warning>
+**Security Recommendations**:
+- Always use HTTPS in production
+- Store tokens securely (httpOnly cookies preferred over localStorage)
+- Implement token rotation strategies
+- Set appropriate token expiration times
+- Use CORS policies to restrict API access
+- Implement rate limiting on authentication endpoints
+</Warning>
+
+<Tip>
+For enhanced security, consider implementing:
+- Two-factor authentication (2FA)
+- Email verification on sign-up
+- Password strength requirements
+- Account lockout after failed attempts
+</Tip>

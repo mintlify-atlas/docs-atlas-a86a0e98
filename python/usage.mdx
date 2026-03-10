@@ -1,0 +1,174 @@
+---
+title: Usage Guide
+description: Learn how to use the Password Generator package in your projects
+---
+
+## Quick Start
+
+The Password Generator package provides a simple way to generate secure random passwords using numbers, letters, and special characters.
+
+## Command Line Usage
+
+Generate a password directly from the command line:
+
+```bash
+python -m password_generator
+```
+
+This will execute the main password generation function and output a random password.
+
+## Programmatic Usage
+
+### Basic Password Generation
+
+The simplest way to generate a password is using the `password()` function:
+
+```python
+from password_generator import password
+
+# Generate a random password
+generated_password = password()
+print(f"Your password: {generated_password}")
+```
+
+The `password()` function automatically:
+- Generates a list of 50 random numbers between 51 and 4000
+- Selects 5 random lowercase letters from the alphabet
+- Selects 5 random special characters
+- Creates a 10-character password combining these elements
+
+### Custom Password Generation
+
+For more control, use the `password_generator()` function with custom lists:
+
+```python
+from password_generator.password_generator import password_generator
+
+# Define your custom character sets
+list_num = list(range(0, 100))  # Numbers 0-99
+list_str = list("abcdefghijklmnopqrstuvwxyz")  # Lowercase letters
+list_char = ['!', '@', '#', '$', '%', '^', '&', '*']
+
+# Generate a password with custom parameters
+custom_password = password_generator(list_num, list_str, list_char)
+print(f"Custom password: {custom_password}")
+```
+
+### Using the list_elements Class
+
+The `list_elements` class helps generate random selections:
+
+```python
+from password_generator.password_generator import list_elements
+import random
+
+# Generate random numbers
+num_generator = list_elements(random.randint(51, 4000))
+random_numbers = num_generator.select_num()
+print(f"Random numbers: {random_numbers[:5]}")  # Show first 5
+
+# Generate random characters
+alphabet = list("abcdefghijklmnopqrstuvwxyz")
+char_generator = list_elements(alphabet)
+random_chars = char_generator.select_char()
+print(f"Random characters: {random_chars}")
+```
+
+## Password Format
+
+Generated passwords follow this 10-character pattern:
+
+1. Special character
+2. Number
+3. Lowercase letter
+4. Special character
+5. Uppercase letter
+6. Lowercase letter
+7. Number
+8. Lowercase letter
+9. Lowercase letter
+10. Special character
+
+Example output: `#5a$Bc7de!`
+
+## Integration Examples
+
+### Web Application Integration
+
+```python
+from password_generator import password
+from flask import Flask, jsonify
+
+app = Flask(__name__)
+
+@app.route('/generate-password')
+def generate():
+    new_password = password()
+    return jsonify({'password': new_password})
+
+if __name__ == '__main__':
+    app.run()
+```
+
+### Batch Password Generation
+
+```python
+from password_generator import password
+
+def generate_multiple_passwords(count):
+    """
+    Generate multiple unique passwords
+    """
+    passwords = set()
+    while len(passwords) < count:
+        new_password = password()
+        passwords.add(new_password)
+    return list(passwords)
+
+# Generate 10 unique passwords
+password_list = generate_multiple_passwords(10)
+for i, pwd in enumerate(password_list, 1):
+    print(f"Password {i}: {pwd}")
+```
+
+### User Registration System
+
+```python
+from password_generator import password
+
+def create_temporary_password(username):
+    """
+    Generate a temporary password for new users
+    """
+    temp_password = password()
+    print(f"Temporary password for {username}: {temp_password}")
+    # In production, send this via email and hash before storing
+    return temp_password
+
+# Example usage
+create_temporary_password("john.doe@example.com")
+```
+
+## Error Handling
+
+The package includes built-in error handling:
+
+```python
+from password_generator import password
+
+try:
+    generated_password = password()
+    if generated_password:
+        print(f"Success: {generated_password}")
+    else:
+        print("Password generation failed")
+except Exception as e:
+    print(f"Error: {e}")
+```
+
+## Best Practices
+
+1. **Store Securely**: Always hash passwords before storing them in a database
+2. **Use HTTPS**: Transmit generated passwords over secure connections only
+3. **Temporary Passwords**: Consider generated passwords as temporary and prompt users to change them
+4. **Multiple Attempts**: The `password_generator()` function creates 50 candidates to ensure uniqueness

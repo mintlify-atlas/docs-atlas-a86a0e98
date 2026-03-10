@@ -1,0 +1,152 @@
+---
+title: "Create Saved Password"
+api: "POST /api/password-generator/save-passwords/"
+---
+
+Saves a password for a specific URL or page. Requires authentication.
+
+## Endpoint
+
+```
+POST /api/password-generator/save-passwords/
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication. User must be logged in.
+</ParamField>
+
+## Request Body
+
+<ParamField body="user" type="integer" required>
+  The user ID who is saving the password.
+</ParamField>
+
+<ParamField body="password_saved" type="string" required>
+  The password to be saved (max 200 characters).
+</ParamField>
+
+<ParamField body="url" type="string" required>
+  The URL where this password is used (max 200 characters).
+</ParamField>
+
+<ParamField body="name_pages" type="string" optional>
+  A friendly name for the page or service (max 200 characters).
+</ParamField>
+
+### Request Example
+
+```json
+{
+  "user": 1,
+  "password_saved": "MySecureP@ss123",
+  "url": "https://example.com",
+  "name_pages": "Example Website"
+}
+```
+
+## Response
+
+### Success Response
+
+```json 200 OK
+"password saved successfully"
+```
+
+### Error Responses
+
+<ResponseExample>
+```json 400 Bad Request
+{
+  "user": ["This field is required."],
+  "password_saved": ["This field is required."],
+  "url": ["This field is required."]
+}
+```
+</ResponseExample>
+
+<ResponseExample>
+```json 400 Bad Request
+{
+  "error": "Missing required fields."
+}
+```
+</ResponseExample>
+
+<ResponseExample>
+```json 404 Not Found
+{
+  "error": "password does not exist after creation."
+}
+```
+</ResponseExample>
+
+<ResponseExample>
+```json 500 Internal Server Error
+{
+  "error": "error message"
+}
+```
+</ResponseExample>
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X POST https://api.example.com/api/password-generator/save-passwords/ \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "user": 1,
+    "password_saved": "MySecureP@ss123",
+    "url": "https://example.com",
+    "name_pages": "Example Website"
+  }'
+```
+
+```javascript JavaScript
+fetch('https://api.example.com/api/password-generator/save-passwords/', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_TOKEN',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    user: 1,
+    password_saved: 'MySecureP@ss123',
+    url: 'https://example.com',
+    name_pages: 'Example Website'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+```
+
+```python Python
+import requests
+
+headers = {
+    'Authorization': 'Bearer YOUR_TOKEN',
+    'Content-Type': 'application/json'
+}
+
+data = {
+    'user': 1,
+    'password_saved': 'MySecureP@ss123',
+    'url': 'https://example.com',
+    'name_pages': 'Example Website'
+}
+
+response = requests.post(
+    'https://api.example.com/api/password-generator/save-passwords/',
+    headers=headers,
+    json=data
+)
+print(response.json())
+```
+</CodeGroup>
+
+## Implementation Details
+
+This endpoint is implemented in `views.py:32` using the `save_passwords` view function. It validates the request data using `SavedPasswordsSerializer` and saves the password to the database associated with the authenticated user.

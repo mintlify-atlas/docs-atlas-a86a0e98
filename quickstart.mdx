@@ -1,80 +1,369 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart
+description: Get started with Password Generator in minutes - web app, Python package, or console
 ---
 
-## Get started in three steps
+## Choose Your Implementation
 
-Get your documentation site running locally and make your first customization.
+Password Generator offers three ways to generate secure passwords. Choose the one that best fits your needs:
 
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+<CardGroup cols={3}>
+  <Card title="Web Application" icon="globe">
+    User-friendly interface with password management
+  </Card>
+  
+  <Card title="Python Package" icon="python">
+    Programmatic integration into your applications
+  </Card>
+  
+  <Card title="Console" icon="terminal">
+    Command-line tool for quick generation
+  </Card>
 </CardGroup>
 
+## Web Application
+
+The web application provides a complete password management solution with authentication and cloud storage.
+
+### Generate Your First Password
+
+<Steps>
+  <Step title="Access the Web Application">
+    Navigate to the Password Generator web application at `https://password-generator-backend.fly.dev`
+    
+    You'll see the landing page with a "Generate Password" button.
+  </Step>
+  
+  <Step title="Generate a Password">
+    Click the **Generate Password** button to create a new secure password.
+    
+    The password will be displayed in the center of the screen. Each click generates a new unique password.
+    
+    <Note>
+      No authentication required for basic password generation. This feature is publicly accessible.
+    </Note>
+  </Step>
+  
+  <Step title="Copy the Password">
+    Click the copy button next to the generated password to copy it to your clipboard.
+    
+    The password format includes:
+    - Mixed case letters (a-z, A-Z)
+    - Numbers (0-9)
+    - Special characters (!@#$%^&*)
+  </Step>
+</Steps>
+
+### Create an Account and Save Passwords
+
+To save and manage passwords, you need to create an account:
+
+<Steps>
+  <Step title="Register a New Account">
+    Click on **Sign Up** in the navigation menu.
+    
+    Fill out the registration form:
+    ```json Registration Fields
+    {
+      "username": "your_username",
+      "email": "your_email@example.com",
+      "password": "your_secure_password",
+      "first_name": "John",
+      "last_name": "Doe"
+    }
+    ```
+    
+    <Warning>
+      Email must be unique. You'll receive a JWT token upon successful registration.
+    </Warning>
+  </Step>
+  
+  <Step title="Sign In">
+    After registration, navigate to **Sign In** and enter your credentials.
+    
+    The application uses JWT (JSON Web Token) authentication for secure session management.
+  </Step>
+  
+  <Step title="Save Generated Passwords">
+    Once authenticated:
+    1. Generate a new password
+    2. Click the **Save** button
+    3. Fill out the modal form:
+       - **Site Name**: Name of the website/service
+       - **URL**: Website address
+       - **Password**: (auto-filled with generated password)
+    
+    Your password is now saved to your account.
+  </Step>
+  
+  <Step title="Manage Saved Passwords">
+    Access your saved passwords from the navigation menu:
+    
+    - **View**: See all your saved passwords
+    - **Update**: Edit site name, URL, or password
+    - **Delete**: Remove passwords you no longer need
+    
+    <Note>
+      All saved passwords are scoped to your account. Other users cannot access your data.
+    </Note>
+  </Step>
+</Steps>
+
+### Additional Features
+
+<CardGroup cols={2}>
+  <Card title="Dark Mode" icon="moon">
+    Toggle between light and dark themes using the theme button in the navigation bar
+  </Card>
+  
+  <Card title="User Profile" icon="user">
+    Update your profile information, upload an avatar, or delete your account from the profile page
+  </Card>
+</CardGroup>
+
+## Python Package
+
+Use the Password Generator as a Python library in your applications.
+
+### Installation
+
+<Steps>
+  <Step title="Install via pip">
+    ```bash
+    pip install edimez14-password-generator-1
+    ```
+    
+    <Note>
+      Requires Python 3.6 or higher. No additional dependencies needed.
+    </Note>
+  </Step>
+</Steps>
+
+### Basic Usage
+
+<CodeGroup>
+```python Simple Generation
+from password_generator import password
+
+# Generate a password with default settings
+generated_password = password()
+print("Generated Password:", generated_password)
+
+# Output example: "#5aB8c7d9!"
+```
+
+```python Custom Character Sets
+from password_generator import password_generator
+
+# Define custom character sets
+list_num = list(range(0, 10))
+list_str = list("abcdefghijklmnopqrstuvwxyz")
+list_char = ['!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', '-', '.', '/', ':', ';', '<', '=', '>', '?', '@', '[', ']', '^', '_', '`', '{', '|', '}', '~']
+
+# Generate password with custom sets
+generated_password = password_generator(list_num, list_str, list_char)
+print("Generated Password:", generated_password)
+```
+
+```python Multiple Passwords
+from password_generator import password
+
+# Generate multiple passwords
+passwords = [password() for _ in range(5)]
+
+for idx, pwd in enumerate(passwords, 1):
+    print(f"Password {idx}: {pwd}")
+
+# Output:
+# Password 1: "#5aB8c7d9!"
+# Password 2: "@3xF2e1k6$"
+# Password 3: "+9mA4s8h7%"
+# Password 4: "!7pN5q3r2#"
+# Password 5: "*8dL6t9w1&"
+```
+</CodeGroup>
+
+### Integration Example
+
+Here's how the web application integrates the password generation logic:
+
+```python Django View Integration
+from password_generator import password
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework import status
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def response_password(request):
+    try:
+        result = password()
+        
+        if isinstance(result, str) == False:
+            return Response(
+                {"Error in script": result}, 
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+        
+        return Response(
+            {"output": result}, 
+            status=status.HTTP_200_OK
+        )
+    except Exception as e:
+        return Response(
+            {"error": str(e)}, 
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+```
+
+### Frontend Integration
+
+The React frontend calls the API to retrieve generated passwords:
+
+```javascript API Request
+import axios from "axios";
+
+const api = axios.create({
+  baseURL: "https://password-generator-backend.fly.dev/api/",
+});
+
+export const getGeneratePassword = async () => {
+  try {
+    const response = await api.get("response-password/");
+    if (response.data && response.data.output) {
+      return response.data.output;
+    } else {
+      throw new Error("No output returned from the backend");
+    }
+  } catch (error) {
+    console.error("Error fetching Python output:", error);
+    throw error;
+  }
+};
+```
+
+```jsx React Component
+"use client";
+import { useState } from 'react';
+import { Button } from "@nextui-org/button";
+import { getGeneratePassword } from '@/app/utils/Request.api';
+
+export default function Content() {
+  const [password, setPassword] = useState("Press the button to generate a password");
+
+  const handleOnClick = async () => {
+    try {
+      const newPassword = await getGeneratePassword();
+      setPassword(newPassword);
+    } catch (error) {
+      console.error("Error getting password:", error);
+    }
+  };
+
+  return (
+    <main className="flex flex-col gap-2 items-center justify-center">
+      <div className='flex gap-3 items-center justify-between'>
+        <p className='text-2xl text-center'>{password}</p>
+      </div>
+      <Button onClick={handleOnClick}>
+        generate password
+      </Button>
+    </main>
+  );
+}
+```
+
+## Console Application
+
+The console version provides the quickest way to generate a password from the command line.
+
+### Installation
+
+<Steps>
+  <Step title="Install the Package">
+    ```bash
+    pip install edimez14-password-generator-1
+    ```
+  </Step>
+  
+  <Step title="Run from Command Line">
+    ```bash
+    python -m password_generator
+    ```
+    
+    A password will be generated and displayed in your terminal.
+  </Step>
+</Steps>
+
+### Example Output
+
+```bash Terminal
+$ python -m password_generator
+#5aB8c7d9!
+```
+
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  The console version uses the same core generation logic as the web application and Python package, ensuring consistent password quality across all implementations.
 </Note>
+
+## Understanding Password Generation
+
+### The Generation Algorithm
+
+Each password is created through a multi-step process:
+
+<Steps>
+  <Step title="Initialize Character Pools">
+    Three pools are created:
+    - **Numbers**: Random selection from 0-4000
+    - **Letters**: Random selection from a-z
+    - **Special Characters**: Random selection from 36 special characters
+  </Step>
+  
+  <Step title="Generate 50 Candidates">
+    The algorithm creates 50 unique password candidates, each following the pattern:
+    
+    `[special][number][lowercase][special][UPPERCASE][lowercase][number][lowercase][lowercase][special]`
+  </Step>
+  
+  <Step title="Random Selection">
+    One password is randomly selected from the 50 candidates to return as the final result.
+  </Step>
+</Steps>
+
+### Password Strength
+
+Generated passwords provide strong security through:
+
+- **Length**: 10 characters
+- **Complexity**: 4 character types (uppercase, lowercase, numbers, special)
+- **Entropy**: Multiple randomization passes
+- **Uniqueness**: Duplicate checking during generation
+
+<Warning>
+  While the algorithm generates strong passwords, remember to:
+  - Never reuse passwords across different sites
+  - Store passwords securely (use the web app's save feature or a password manager)
+  - Enable two-factor authentication when available
+</Warning>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="API Reference" icon="book" href="/api/password/generate">
+    Explore detailed API endpoint documentation
+  </Card>
+  
+  <Card title="Authentication" icon="shield" href="/features/user-authentication">
+    Learn about JWT authentication and user management
+  </Card>
+  
+  <Card title="Password Management" icon="database" href="/features/saved-passwords">
+    Deep dive into CRUD operations for saved passwords
+  </Card>
+  
+  <Card title="Deployment" icon="rocket" href="/deployment/backend">
+    Deploy your own instance of the web application
+  </Card>
+</CardGroup>

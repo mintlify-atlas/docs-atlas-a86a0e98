@@ -1,0 +1,111 @@
+---
+title: "Delete Saved Password"
+api: "DELETE /api/password-generator/view-all-saved-passwords/{pk}/delete/"
+---
+
+Deletes a saved password. Users can only delete their own passwords.
+
+## Endpoint
+
+```
+DELETE /api/password-generator/view-all-saved-passwords/{pk}/delete/
+```
+
+## Authentication
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token for authentication. User must be logged in.
+</ParamField>
+
+## Path Parameters
+
+<ParamField path="pk" type="integer" required>
+  The unique identifier (primary key) of the saved password to delete.
+</ParamField>
+
+## Request
+
+This endpoint does not require a request body.
+
+## Response
+
+### Success Response
+
+```json 204 No Content
+{
+  "message": "Password deleted successfully"
+}
+```
+
+### Error Responses
+
+<ResponseExample>
+```json 404 Not Found
+{
+  "error": "Password not found."
+}
+```
+</ResponseExample>
+
+<ResponseExample>
+```json 500 Internal Server Error
+{
+  "error": "error message"
+}
+```
+</ResponseExample>
+
+## Authorization
+
+Users can only delete passwords they own. The endpoint automatically filters by the authenticated user, ensuring users cannot delete other users' passwords.
+
+If a user attempts to delete a password that:
+- Does not exist, or
+- Belongs to another user
+
+The endpoint will return a 404 Not Found error.
+
+## Example Request
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE https://api.example.com/api/password-generator/view-all-saved-passwords/1/delete/ \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```javascript JavaScript
+fetch('https://api.example.com/api/password-generator/view-all-saved-passwords/1/delete/', {
+  method: 'DELETE',
+  headers: {
+    'Authorization': 'Bearer YOUR_TOKEN'
+  }
+})
+.then(response => {
+  if (response.status === 204) {
+    console.log('Password deleted successfully');
+  }
+});
+```
+
+```python Python
+import requests
+
+headers = {
+    'Authorization': 'Bearer YOUR_TOKEN'
+}
+
+response = requests.delete(
+    'https://api.example.com/api/password-generator/view-all-saved-passwords/1/delete/',
+    headers=headers
+)
+
+if response.status_code == 204:
+    print('Password deleted successfully')
+else:
+    print(response.json())
+```
+</CodeGroup>
+
+## Implementation Details
+
+This endpoint is implemented in `views.py:108` using the `delete_saved_password` view function. It retrieves the password instance filtered by both the primary key and the authenticated user, then deletes it from the database.

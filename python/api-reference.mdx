@@ -1,0 +1,257 @@
+---
+title: API Reference
+description: Complete API documentation for the Password Generator package
+---
+
+## Module Overview
+
+The Password Generator package provides three main components:
+
+- `list_elements` class: Generates random selections from numbers or characters
+- `password_generator()` function: Creates passwords from provided lists
+- `password()` function: High-level password generation with defaults
+
+---
+
+## Classes
+
+### list_elements
+
+A class that generates lists of random numbers or characters based on the input element.
+
+```python
+from password_generator.password_generator import list_elements
+```
+
+#### Constructor
+
+<ParamField path="element" type="int | list" required>
+  The input element used for generating random selections. Can be:
+  - An integer: Used as the range for number generation (0 to element-1)
+  - A list: Used as the source for character selection
+</ParamField>
+
+**Example:**
+
+```python
+# Initialize with an integer for numbers
+num_gen = list_elements(1000)
+
+# Initialize with a list for characters
+char_gen = list_elements(['a', 'b', 'c', 'd', 'e'])
+```
+
+#### Methods
+
+##### select_num()
+
+Generates a list of 50 random numbers within the specified range.
+
+```python
+def select_num(self) -> list
+```
+
+<ResponseField name="return" type="list">
+  A list of 50 randomly selected numbers from the range [0, element). If an error occurs, prints an error message.
+</ResponseField>
+
+**Example:**
+
+```python
+num_generator = list_elements(5000)
+random_numbers = num_generator.select_num()
+print(len(random_numbers))  # Output: 50
+print(random_numbers[:5])   # Example: [234, 1892, 45, 3421, 789]
+```
+
+**Error Handling:**
+- Returns error message if the element value is less than 50
+- Prints: `"Error generating list of numbers -> {error_details}"`
+
+---
+
+##### select_char()
+
+Randomly selects up to 5 unique characters from the provided list.
+
+```python
+def select_char(self) -> list
+```
+
+<ResponseField name="return" type="list">
+  A list of unique characters selected randomly from the element list, with a maximum of 5 characters. If an error occurs, prints an error message.
+</ResponseField>
+
+**Example:**
+
+```python
+alphabet = list("abcdefghijklmnopqrstuvwxyz")
+char_generator = list_elements(alphabet)
+random_chars = char_generator.select_char()
+print(random_chars)  # Example: ['a', 'k', 'z', 'm', 'p']
+```
+
+**Note:** The function uses `list(set(chars))` which removes duplicates, so the returned list may contain fewer than 5 characters if duplicates were selected.
+
+**Error Handling:**
+- Prints: `"Error generating character list -> {error_details}"`
+
+---
+
+## Functions
+
+### password_generator()
+
+Generates a random 10-character password using the provided lists of numbers, strings, and special characters.
+
+```python
+from password_generator.password_generator import password_generator
+```
+
+#### Parameters
+
+<ParamField path="list_num" type="list" required>
+  A list of numbers that can be used in the password generation process.
+</ParamField>
+
+<ParamField path="list_str" type="list" required>
+  A list of strings (typically lowercase letters) that will be used to generate the password.
+</ParamField>
+
+<ParamField path="list_char" type="list" required>
+  A list of special characters such as `!@#$%^&*()`.
+</ParamField>
+
+#### Returns
+
+<ResponseField name="return" type="str">
+  A randomly generated 10-character password combining elements from all three input lists. The password follows the pattern: `special_char + number + letter + special_char + UPPERCASE_letter + letter + number + letter + letter + special_char`
+</ResponseField>
+
+#### Implementation Details
+
+- Generates 50 candidate passwords
+- Ensures uniqueness by checking against previously generated passwords
+- Randomly selects one password from the candidates
+- One character is automatically uppercased (position 5)
+
+**Example:**
+
+```python
+from password_generator.password_generator import password_generator
+
+# Define character sets
+list_num = list(range(0, 100))
+list_str = list("abcdefghijklmnopqrstuvwxyz")
+list_char = ['!', '@', '#', '$', '%', '^', '&', '*', '(', ')', '-', '_', '=', '+']
+
+# Generate password
+password = password_generator(list_num, list_str, list_char)
+print(password)  # Example output: "@5aX#Bc7de!"
+```
+
+**Error Handling:**
+- Prints: `"Error generating password -> {error_details}"`
+
+---
+
+### password()
+
+High-level function that generates a password with predefined character sets and random selection parameters.
+
+```python
+from password_generator import password
+```
+
+#### Parameters
+
+No parameters required. Uses internal defaults.
+
+#### Returns
+
+<ResponseField name="return" type="str">
+  A randomly generated 10-character password using:
+  - Numbers: 50 random numbers from range [51, 4000)
+  - Letters: 5 random lowercase letters from a-z
+  - Special characters: 5 random characters from the set `!"#$%&'()*+,-./:;<=>?@[]^_{|}~¡¿°€` and backtick
+</ResponseField>
+
+#### Default Character Sets
+
+The function uses these predefined sets:
+
+```python
+# Numbers: Random range between 51 and 4000
+num = random.randint(51, 4000)
+
+# Lowercase letters
+alphabet = "abcdefghijklmnopqrstuvwxyz"
+
+# Special characters
+special_chars = ['!', '"', '#', '$', '%', '&', "'", '(', ')', '*', '+', ',', 
+                 '-', '.', '/', ':', ';', '<', '=', '>', '?', '@', '[', ']', 
+                 '^', '_', '`', '{', '|', '}', '~', "¡", "¿", "°", "€"]
+```
+
+**Example:**
+
+```python
+from password_generator import password
+
+# Simple password generation
+my_password = password()
+print(f"Generated password: {my_password}")
+# Example output: "Generated password: !42a#Xd19m€"
+```
+
+**Error Handling:**
+- Prints: `"Error in generating data collection to generate the password -> {error_details}"`
+
+---
+
+## Usage Flow
+
+Here's how the components work together:
+
+```python
+import random
+from password_generator.password_generator import (
+    list_elements,
+    password_generator,
+    password
+)
+
+# Step 1: Create element generators
+num_gen = list_elements(random.randint(51, 4000))
+char_gen = list_elements(list("abcdefghijklmnopqrstuvwxyz"))
+special_gen = list_elements(['!', '@', '#', '$', '%'])
+
+# Step 2: Generate element lists
+num_list = num_gen.select_num()
+char_list = char_gen.select_char()
+special_list = special_gen.select_char()
+
+# Step 3: Generate password
+final_password = password_generator(num_list, char_list, special_list)
+
+# Or simply use the high-level function
+quick_password = password()
+```
+
+## Module Information
+
+<ResponseField name="version" type="string">
+  Current version: 0.6
+</ResponseField>
+
+<ResponseField name="author" type="string">
+  Edizon Alexander Meza Leal (edimez14@gmail.com)
+</ResponseField>
+
+<ResponseField name="repository" type="string">
+  https://github.com/edimez14/password_generator
+</ResponseField>
+
+<ResponseField name="license" type="string">
+  Apache Software License 2.0
+</ResponseField>

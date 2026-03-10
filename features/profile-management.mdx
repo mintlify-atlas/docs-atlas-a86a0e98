@@ -1,0 +1,449 @@
+---
+title: Profile Management
+description: Manage user profiles including personal information, avatar uploads, and account deletion
+---
+
+## Overview
+
+The Profile Management system allows authenticated users to view and update their personal information, upload custom avatars, and manage their account settings. All profile operations are secured and restricted to the authenticated user.
+
+## User Profile Model
+
+The user profile is based on Django's `AbstractUser` with custom extensions (`models.py:5-16`):
+
+```python
+class Users(AbstractUser):
+    email = models.EmailField(max_length=200, unique=True)
+    first_name = models.CharField(max_length=200, blank=True, default='')
+    last_name = models.CharField(max_length=200, blank=True, default='')
+    number_phone = models.CharField(max_length=10, blank=True, null=True)
+    avatar = models.ImageField(upload_to='avatars/', blank=True, null=True)
+    
+    REQUIRED_FIELDS = ['email']
+    
+    def __str__(self):
+        return f"{self.id} user: {self.username} full name: {self.first_name} {self.last_name}"
+```
+
+<CardGroup cols={3}>
+  <Card title="Basic Info" icon="user">
+    Username, email, first name, and last name
+  </Card>
+  <Card title="Contact" icon="phone">
+    Optional phone number field (max 10 characters)
+  </Card>
+  <Card title="Avatar" icon="image">
+    Profile picture uploaded to 'avatars/' directory
+  </Card>
+</CardGroup>
+
+<Note>
+The email field is unique across all users and serves as a primary identifier for authentication.
+</Note>
+
+## Viewing Profile Information
+
+Authenticated users can retrieve their complete profile data.
+
+### API Endpoint
+
+**URL**: `POST /api/users/profile/`
+
+**Authentication**: Required (IsAuthenticated)
+
+**Response**:
+```json
+{
+  "id": 1,
+  "username": "johndoe",
+  "email": "john@example.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "number_phone": "1234567890",
+  "avatar": "/media/avatars/profile_123.jpg"
+}
+```
+
+### Implementation
+
+The profile view endpoint (`views.py:82-92`):
+
+```python
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def profile(request):
+    try:
+        serializer = UsersSerializer(instance=request.user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    
+    except Users.DoesNotExist:
+        return Response({'error': 'The user cannot be found in the database.'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+```
+
+<Tip>
+The endpoint automatically uses `request.user` to retrieve the authenticated user's profile, ensuring users can only access their own data.
+</Tip>
+
+## Updating Profile Information
+
+Users can update their profile details including personal information and avatar.
+
+### API Endpoint
+
+**URL**: `PUT /api/users/update-profile/<pk>/`
+
+**Authentication**: Required (IsAuthenticated)
+
+**Content-Type**: `multipart/form-data` (for avatar uploads)
+
+**Request Body**:
+```json
+{
+  "first_name": "Jonathan",
+  "last_name": "Doe",
+  "number_phone": "0987654321"
+}
+```
+
+**With Avatar**:
+```bash
+curl -X PUT http://localhost:8000/api/users/update-profile/1/ \
+  -H "Authorization: Bearer <token>" \
+  -F "first_name=Jonathan" \
+  -F "avatar=@profile.jpg"
+```
+
+**Response**:
+```json
+{
+  "id": 1,
+  "username": "johndoe",
+  "email": "john@example.com",
+  "first_name": "Jonathan",
+  "last_name": "Doe",
+  "number_phone": "0987654321",
+  "avatar": "/media/avatars/profile_123.jpg"
+}
+```
+
+### Implementation
+
+The update profile endpoint (`views.py:95-117`):
+
+```python
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def update_profile(request, pk):
+    try:
+        user = get_object_or_404(Users, pk=pk)
+        if user != request.user:
+            return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+        
+        parser_classes = (MultiPartParser, FormParser)
+        
+        if 'avatars' in request.FILES:
+            avatar = request.FILES['avatar']
+            user.avatar = avatar
+            user.save()
+        
+        serializer = UsersSerializer(user, data=request.data, partial=True)
+        if serializer.is_valid():
+            serializer.save()
+            return Response(serializer.data, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+```
+
+<Warning>
+The endpoint includes authorization checks to ensure users can only update their own profiles: `if user != request.user: return Response({"error": "Not authorized"}, ...)`
+</Warning>
+
+### Partial Updates
+
+The endpoint supports partial updates (`partial=True`), allowing users to update specific fields without sending the entire profile:
+
+```python
+serializer = UsersSerializer(user, data=request.data, partial=True)
+```
+
+This means you can update just the phone number:
+```json
+{
+  "number_phone": "5551234567"
+}
+```
+
+Or just the avatar:
+```bash
+curl -X PUT http://localhost:8000/api/users/update-profile/1/ \
+  -F "avatar=@new_profile.jpg"
+```
+
+## Avatar Support
+
+The system supports profile picture uploads with specific handling.
+
+### Avatar Upload Process
+
+<Steps>
+  <Step title="File Selection">
+    User selects an image file through the frontend upload component
+  </Step>
+  <Step title="Multipart Upload">
+    File is sent as multipart/form-data in the PUT request
+  </Step>
+  <Step title="Server Processing">
+    Backend receives file via `request.FILES['avatar']`
+  </Step>
+  <Step title="Storage">
+    Image is saved to `avatars/` directory in media storage
+  </Step>
+  <Step title="URL Generation">
+    Django generates a URL path for accessing the uploaded image
+  </Step>
+</Steps>
+
+### Avatar Upload Component
+
+The frontend includes a dedicated avatar uploader (`AvatarUploader.jsx`):
+
+```jsx
+export default function AvatarUploader({ currentAvatar, onAvatarChange }) {
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      onAvatarChange(file);
+      // Preview the selected image
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreview(reader.result);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  
+  return (
+    <div>
+      <img src={preview || currentAvatar} alt="Profile" />
+      <input 
+        type="file" 
+        accept="image/*" 
+        onChange={handleFileChange} 
+      />
+    </div>
+  );
+}
+```
+
+### Supported Image Formats
+
+The `ImageField` accepts common image formats:
+- JPEG (.jpg, .jpeg)
+- PNG (.png)
+- GIF (.gif)
+- WebP (.webp)
+- BMP (.bmp)
+
+<Tip>
+For optimal performance, consider implementing client-side image resizing before upload to reduce bandwidth and storage requirements.
+</Tip>
+
+## Account Deletion
+
+Users can permanently delete their accounts and all associated data.
+
+### API Endpoint
+
+**URL**: `DELETE /api/users/delete/<user_id>/`
+
+**Authentication**: Required (IsAuthenticated)
+
+**Response**:
+```json
+{
+  "message": "User deleted successfully"
+}
+```
+
+### Implementation
+
+The delete user endpoint (`views.py:121-129`):
+
+```python
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_user(request, user_id):
+    try:
+        user = get_object_or_404(Users, id=user_id)
+        user.delete()
+        return Response({"message": "User deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+    except Exception as e:
+        return Response({"error": str(e)}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+```
+
+<Warning>
+**Cascade Deletion**: When a user is deleted, all related data is automatically removed due to the `on_delete=models.CASCADE` setting on foreign keys. This includes:
+- All saved passwords
+- Uploaded avatar
+- Any other user-related data
+
+This action is **irreversible**.
+</Warning>
+
+### Confirmation Flow
+
+Best practice is to implement a confirmation dialog:
+
+```jsx
+const handleDeleteAccount = async () => {
+  const confirmed = window.confirm(
+    "Are you sure you want to delete your account? This action cannot be undone."
+  );
+  
+  if (confirmed) {
+    try {
+      await deleteUser(userId);
+      sessionStorage.clear();
+      window.location.href = "/auth/sign-up";
+    } catch (error) {
+      console.error("Error deleting account:", error);
+    }
+  }
+};
+```
+
+## Profile Features Summary
+
+<CardGroup cols={2}>
+  <Card title="View Profile" icon="eye">
+    Retrieve complete profile information including avatar URL
+  </Card>
+  <Card title="Update Info" icon="pen-to-square">
+    Modify personal details with partial update support
+  </Card>
+  <Card title="Upload Avatar" icon="image">
+    Upload and update profile pictures with multipart support
+  </Card>
+  <Card title="Delete Account" icon="trash">
+    Permanently remove account and all associated data
+  </Card>
+</CardGroup>
+
+## Frontend Profile Page
+
+The profile page is implemented with a content component (`Content.jsx`) that displays and manages profile information:
+
+```jsx
+export default function ProfileContent() {
+  const [user, setUser] = useState(null);
+  const [isEditing, setIsEditing] = useState(false);
+  
+  useEffect(() => {
+    const fetchProfile = async () => {
+      const userData = JSON.parse(sessionStorage.getItem('user'));
+      setUser(userData);
+    };
+    fetchProfile();
+  }, []);
+  
+  return (
+    <div>
+      <AvatarUploader currentAvatar={user?.avatar} />
+      <div>
+        <p>Username: {user?.username}</p>
+        <p>Email: {user?.email}</p>
+        <p>Name: {user?.first_name} {user?.last_name}</p>
+        <p>Phone: {user?.number_phone}</p>
+      </div>
+      <button onClick={() => setIsEditing(true)}>Edit Profile</button>
+    </div>
+  );
+}
+```
+
+## Authorization Model
+
+Profile management includes multiple layers of authorization:
+
+### Endpoint-Level Authorization
+
+```python
+@permission_classes([IsAuthenticated])
+```
+
+Requires valid JWT token in Authorization header.
+
+### User-Level Authorization
+
+```python
+if user != request.user:
+    return Response({"error": "Not authorized"}, status=status.HTTP_403_FORBIDDEN)
+```
+
+Ensures users can only modify their own profiles.
+
+### Automatic User Filtering
+
+```python
+serializer = UsersSerializer(instance=request.user)
+```
+
+Automatically uses the authenticated user from the request.
+
+## Error Handling
+
+| Error Scenario | HTTP Status | Response |
+|---------------|-------------|----------|
+| User not found | 404 | `{"error": "The user cannot be found in the database."}` |
+| Unauthorized access | 403 | `{"error": "Not authorized"}` |
+| Validation error | 400 | `{...serializer.errors}` |
+| Server error | 500 | `{"error": "<error message>"}` |
+
+## Media Configuration
+
+For avatar uploads to work properly, ensure your Django settings include:
+
+```python settings.py
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+```
+
+And in your URLs configuration:
+
+```python urls.py
+from django.conf import settings
+from django.conf.urls.static import static
+
+urlpatterns = [
+    # ... your url patterns
+] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+```
+
+<Note>
+In production, serve media files through a CDN or object storage service like AWS S3 rather than directly from Django.
+</Note>
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Input Validation" icon="check">
+    Validate email format, phone number length, and image file types before submission
+  </Card>
+  <Card title="Image Optimization" icon="bolt">
+    Resize images client-side to reduce upload time and storage costs
+  </Card>
+  <Card title="Error Feedback" icon="message">
+    Display clear, actionable error messages for validation failures
+  </Card>
+  <Card title="Confirmation Dialogs" icon="shield">
+    Require confirmation for destructive actions like account deletion
+  </Card>
+</CardGroup>
+
+<Tip>
+Implement optimistic UI updates for better user experience: update the UI immediately and roll back if the API call fails.
+</Tip>
